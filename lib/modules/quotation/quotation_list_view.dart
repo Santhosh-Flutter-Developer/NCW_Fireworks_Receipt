@@ -51,9 +51,11 @@ class QuotationListView extends GetView<QuotationController> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _PageSizeSelector(controller: controller),
-                ViewModeToggle(
-                  isTableView: controller.isTableView.value,
-                  onChanged: controller.toggleViewMode,
+                Obx(
+                  () => ViewModeToggle(
+                    isTableView: controller.isTableView.value,
+                    onChanged: controller.toggleViewMode,
+                  ),
                 ),
               ],
             ),
@@ -290,7 +292,8 @@ class _TabBar extends StatelessWidget {
             onTap: () => onChanged(tab),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
               decoration: BoxDecoration(
                 gradient: selected ? AppColors.goldGradient : null,
                 borderRadius: BorderRadius.circular(9),
@@ -299,8 +302,9 @@ class _TabBar extends StatelessWidget {
                 tab.label,
                 style: AppTextStyles.body.copyWith(
                   fontWeight: FontWeight.w700,
-                  color:
-                      selected ? AppColors.textOnGold : AppColors.textSecondary,
+                  color: selected
+                      ? AppColors.textOnGold
+                      : AppColors.textSecondary,
                 ),
               ),
             ),
@@ -332,16 +336,19 @@ class _PageSizeSelector extends StatelessWidget {
             border: Border.all(color: AppColors.divider),
           ),
           child: DropdownButtonHideUnderline(
-            child: DropdownButton<int>(
-              value: controller.pageSize.value,
-              style: AppTextStyles.body.copyWith(color: AppColors.textPrimary),
-              dropdownColor: AppColors.surfaceElevated,
-              items: const [10, 25, 50, 100]
-                  .map((n) => DropdownMenuItem(value: n, child: Text('$n')))
-                  .toList(),
-              onChanged: (v) {
-                if (v != null) controller.setPageSize(v);
-              },
+            child: Obx(
+              () => DropdownButton<int>(
+                value: controller.pageSize.value,
+                style:
+                    AppTextStyles.body.copyWith(color: AppColors.textPrimary),
+                dropdownColor: AppColors.surfaceElevated,
+                items: const [10, 25, 50, 100]
+                    .map((n) => DropdownMenuItem(value: n, child: Text('$n')))
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) controller.setPageSize(v);
+                },
+              ),
             ),
           ),
         ),
@@ -474,8 +481,7 @@ class _QuotationTile extends StatelessWidget {
               const Divider(height: 20),
               Align(
                 alignment: Alignment.centerRight,
-                child:
-                    _ActionIcons(quotation: quotation, controller: controller),
+                child: _ActionIcons(quotation: quotation, controller: controller),
               ),
             ],
           ),
@@ -554,61 +560,68 @@ class _Pager extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final total = controller.filtered.length;
-    final pages = controller.totalPages(total);
-    final page = controller.currentPage.value;
-    final start = total == 0 ? 0 : (page - 1) * controller.pageSize.value + 1;
-    final end = (start + controller.pageSize.value - 1).clamp(0, total);
+    return Obx(() {
+      final total = controller.filtered.length;
+      final pages = controller.totalPages(total);
+      final page = controller.currentPage.value;
+      final start =
+          total == 0 ? 0 : (page - 1) * controller.pageSize.value + 1;
+      final end = (start + controller.pageSize.value - 1).clamp(0, total);
 
-    return Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 10,
-      runSpacing: 8,
-      children: [
-        Text(
-          total == 0
-              ? 'Showing 0 entries'
-              : 'Showing $start to $end of $total entries',
-          style: AppTextStyles.caption,
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              onPressed: page > 1 ? () => controller.goToPage(1) : null,
-              icon: const Icon(Icons.first_page_rounded, size: 18),
-            ),
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              onPressed: page > 1 ? () => controller.goToPage(page - 1) : null,
-              icon: const Icon(Icons.chevron_left_rounded, size: 18),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                gradient: AppColors.goldGradient,
-                borderRadius: BorderRadius.circular(8),
+      return Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 10,
+        runSpacing: 8,
+        children: [
+          Text(
+            total == 0
+                ? 'Showing 0 entries'
+                : 'Showing $start to $end of $total entries',
+            style: AppTextStyles.caption,
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                onPressed: page > 1 ? () => controller.goToPage(1) : null,
+                icon: const Icon(Icons.first_page_rounded, size: 18),
               ),
-              child: Text('$page',
-                  style: AppTextStyles.bodyStrong
-                      .copyWith(color: AppColors.textOnGold)),
-            ),
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              onPressed:
-                  page < pages ? () => controller.goToPage(page + 1) : null,
-              icon: const Icon(Icons.chevron_right_rounded, size: 18),
-            ),
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              onPressed: page < pages ? () => controller.goToPage(pages) : null,
-              icon: const Icon(Icons.last_page_rounded, size: 18),
-            ),
-          ],
-        ),
-      ],
-    );
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                onPressed:
+                    page > 1 ? () => controller.goToPage(page - 1) : null,
+                icon: const Icon(Icons.chevron_left_rounded, size: 18),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: AppColors.goldGradient,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text('$page',
+                    style: AppTextStyles.bodyStrong
+                        .copyWith(color: AppColors.textOnGold)),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                onPressed: page < pages
+                    ? () => controller.goToPage(page + 1)
+                    : null,
+                icon: const Icon(Icons.chevron_right_rounded, size: 18),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                onPressed:
+                    page < pages ? () => controller.goToPage(pages) : null,
+                icon: const Icon(Icons.last_page_rounded, size: 18),
+              ),
+            ],
+          ),
+        ],
+      );
+    });
   }
 }
