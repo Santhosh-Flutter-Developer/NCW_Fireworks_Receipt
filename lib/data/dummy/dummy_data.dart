@@ -388,29 +388,29 @@ class DummyData {
     return [
       EstimationModel(
         id: 'E001',
-        estimationNo: 'EST-2026-001',
+        estimationNo: 'EST037/26-27',
         partyId: 'P002',
         partyName: 'Kaveri Crackers Wholesale',
-        date: DateTime(2026, 7, 2),
+        agentName: 'Direct',
+        pricelistName: '2026 MB June Whole Sale Price',
+        date: DateTime(2026, 7, 6),
         items: [
           BillingItemModel(
               productId: prods[3].id,
               productName: prods[3].name,
-              quantity: 60,
-              rate: prods[3].price),
-          BillingItemModel(
-              productId: prods[5].id,
-              productName: prods[5].name,
-              quantity: 12,
-              rate: prods[5].price),
+              quantity: 6,
+              rate: 1400,
+              unit: 'BOX'),
         ],
-        status: DocStatus.draft,
+        status: DocStatus.active,
       ),
       EstimationModel(
         id: 'E002',
-        estimationNo: 'EST-2026-002',
+        estimationNo: 'EST036/26-27',
         partyId: 'P001',
         partyName: 'Sri Lakshmi Traders',
+        agentName: 'Ravikumar',
+        pricelistName: '2026 MB June Whole Sale Price',
         date: DateTime(2026, 7, 4),
         items: [
           BillingItemModel(
@@ -419,13 +419,15 @@ class DummyData {
               quantity: 8,
               rate: prods[6].price),
         ],
-        status: DocStatus.converted,
+        status: DocStatus.active,
       ),
       EstimationModel(
         id: 'E003',
-        estimationNo: 'EST-2026-003',
+        estimationNo: 'EST035/26-27',
         partyId: 'P006',
         partyName: 'Anbu & Sons',
+        agentName: 'Direct',
+        pricelistName: '2026 MB June Whole Sale Price',
         date: DateTime(2026, 6, 30),
         items: [
           BillingItemModel(
@@ -437,9 +439,61 @@ class DummyData {
               productId: prods[2].id,
               productName: prods[2].name,
               quantity: 3,
-              rate: prods[2].price),
+              rate: prods[2].price,
+              section: 2),
         ],
-        status: DocStatus.sent,
+        status: DocStatus.active,
+      ),
+      EstimationModel(
+        id: 'E004',
+        estimationNo: 'EST034/26-27',
+        partyId: 'P003',
+        partyName: 'Meenakshi Fireworks',
+        agentName: 'Suresh',
+        pricelistName: '2026 MB June Whole Sale Price',
+        date: DateTime(2026, 6, 28),
+        items: [
+          BillingItemModel(
+              productId: prods[4].id,
+              productName: prods[4].name,
+              quantity: 20,
+              rate: prods[4].price),
+        ],
+        status: DocStatus.draft,
+      ),
+      EstimationModel(
+        id: 'E005',
+        estimationNo: 'EST033/26-27',
+        partyId: 'P004',
+        partyName: 'Vinayaga Traders',
+        agentName: 'Direct',
+        pricelistName: '2026 MB June Whole Sale Price',
+        date: DateTime(2026, 6, 25),
+        items: [
+          BillingItemModel(
+              productId: prods[1].id,
+              productName: prods[1].name,
+              quantity: 10,
+              rate: prods[1].price),
+        ],
+        status: DocStatus.draft,
+      ),
+      EstimationModel(
+        id: 'E006',
+        estimationNo: 'EST032/26-27',
+        partyId: 'P005',
+        partyName: 'Om Sakthi Crackers',
+        agentName: 'Ravikumar',
+        pricelistName: '2026 MB June Whole Sale Price',
+        date: DateTime(2026, 6, 20),
+        items: [
+          BillingItemModel(
+              productId: prods[5].id,
+              productName: prods[5].name,
+              quantity: 5,
+              rate: prods[5].price),
+        ],
+        status: DocStatus.cancelled,
       ),
     ];
   }

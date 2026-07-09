@@ -79,12 +79,12 @@ class _AppDrawerState extends State<AppDrawer> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  _navTile(
-                    icon: Icons.tune_rounded,
-                    label: 'Stock Adjustment',
-                    route: AppRoutes.stockAdjustmentList,
-                  ),
+                  // const SizedBox(height: 4),
+                  // _navTile(
+                  //   icon: Icons.tune_rounded,
+                  //   label: 'Stock Adjustment',
+                  //   route: AppRoutes.stockAdjustmentList,
+                  // ),
                 ],
               ),
             ),
