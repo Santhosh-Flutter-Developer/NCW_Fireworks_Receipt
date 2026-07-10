@@ -10,6 +10,8 @@ abstract class AppRoutes {
   static const productList = '/product';
   static const productForm = '/product/form';
 
+  static const priceUpload = '/price-upload';
+
   static const quotationList = '/quotation';
   static const quotationForm = '/quotation/form';
 

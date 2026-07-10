@@ -60,6 +60,10 @@ class _AppDrawerState extends State<AppDrawer> {
                         label: 'Product',
                         route: AppRoutes.productList,
                       ),
+                      _subTile(
+                        label: 'Price Upload',
+                        route: AppRoutes.priceUpload,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),

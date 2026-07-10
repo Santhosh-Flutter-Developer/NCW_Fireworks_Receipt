@@ -1,4 +1,6 @@
 import 'package:get/get.dart';
+import 'package:ncw_fireworks/modules/price_upload/price_upload_binding.dart';
+import 'package:ncw_fireworks/modules/price_upload/price_upload_list_view.dart';
 import '../modules/auth/login_binding.dart';
 import '../modules/auth/login_view.dart';
 import '../modules/dashboard/dashboard_binding.dart';
@@ -53,6 +55,11 @@ class AppPages {
       name: AppRoutes.productForm,
       page: () => const ProductFormView(),
       binding: ProductBinding(),
+    ),
+     GetPage(
+      name: AppRoutes.priceUpload,
+      page: () => const PriceUploadListView(),
+      binding: PriceUploadBinding(),
     ),
     GetPage(
       name: AppRoutes.quotationList,
