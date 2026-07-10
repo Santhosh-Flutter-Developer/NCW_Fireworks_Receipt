@@ -43,3 +43,11 @@ class InvalidCredentialsException extends ApiException {
     super.message = 'Invalid username or password.',
   ]);
 }
+
+/// Server understood the request but rejected it for a business/validation
+/// reason (head.code != 200) — e.g. "This party name is already exist",
+/// "Invalid Agent". [message] is the server's own `head.msg`, which is
+/// already user-presentable, so callers can show it directly.
+class ApiRequestException extends ApiException {
+  const ApiRequestException(super.message);
+}

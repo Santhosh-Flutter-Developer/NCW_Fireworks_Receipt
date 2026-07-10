@@ -23,14 +23,6 @@ class PartyFormView extends GetView<PartyController> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 120),
             children: [
-              const SectionLabel(text: 'Agent'),
-              Obx(() => _dropdownField(
-                    value: controller.formAgent.value,
-                    hint: 'Select',
-                    options: controller.agentOptions,
-                    onChanged: (v) => controller.formAgent.value = v,
-                  )),
-              const SizedBox(height: 18),
               const SectionLabel(text: 'Party Details'),
               _field(
                 'Party Name *',
@@ -68,41 +60,52 @@ class PartyFormView extends GetView<PartyController> {
               const SectionLabel(text: 'Location'),
               Text('State *', style: AppTextStyles.caption),
               const SizedBox(height: 8),
-              Obx(() => _dropdownField(
+              Obx(() => _searchableDropdownField(
+                    context: context,
+                    title: 'Select State',
                     value: controller.formState.value,
                     hint: 'Select',
                     options: controller.stateOptions,
-                    onChanged: (v) {
-                      if (v != null) controller.formState.value = v;
-                      controller.formDistrict.value = null;
-                      controller.formCity.value = null;
-                    },
+                    onChanged: controller.setFormState,
                   )),
               const SizedBox(height: 16),
               Text('District', style: AppTextStyles.caption),
               const SizedBox(height: 8),
-              Obx(() => _dropdownField(
+              Obx(() => _searchableDropdownField(
+                    context: context,
+                    title: 'Select District',
                     value: controller.formDistrict.value,
                     hint: 'Select',
                     options:
                         controller.districtOptions(controller.formState.value),
-                    onChanged: (v) {
-                      controller.formDistrict.value = v;
-                      controller.formCity.value = null;
-                    },
+                    onChanged: controller.setFormDistrict,
                   )),
               const SizedBox(height: 16),
               Text('City', style: AppTextStyles.caption),
               const SizedBox(height: 8),
-              Obx(() => _dropdownField(
+              Obx(() => _searchableDropdownField(
+                    context: context,
+                    title: 'Select City',
                     value: controller.formCity.value,
                     hint: 'Select',
-                    options: controller.formDistrict.value == null
-                        ? []
-                        : controller
-                            .cityOptions(controller.formDistrict.value!),
-                    onChanged: (v) => controller.formCity.value = v,
+                    options: controller.cityOptions(controller.formState.value),
+                    onChanged: controller.setFormCity,
                   )),
+              Obx(() {
+                if (controller.formCity.value != 'Others') {
+                  return const SizedBox.shrink();
+                }
+                return Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: _field(
+                    'Others city *',
+                    controller.othersCityCtrl,
+                    hint: 'e.g. Thiruthangal',
+                    helper: 'Text Only (Max Char: 30)',
+                    maxLength: 30,
+                  ),
+                );
+              }),
               const SizedBox(height: 16),
               _field(
                 'Pincode',
@@ -161,23 +164,33 @@ class PartyFormView extends GetView<PartyController> {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => controller.save(asDraft: true),
-                  child: const Text('Draft'),
+          child: Obx(() {
+            final saving = controller.isSaving.value;
+            return Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed:
+                        saving ? null : () => controller.save(asDraft: true),
+                    child: const Text('Draft'),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => controller.save(),
-                  child: Text(isEditing ? 'Update' : 'Submit'),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: saving ? null : () => controller.save(),
+                    child: saving
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(isEditing ? 'Update' : 'Submit'),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            );
+          }),
         ),
       ),
     );
@@ -222,6 +235,83 @@ class PartyFormView extends GetView<PartyController> {
             ),
         ],
       ),
+    );
+  }
+
+  /// Looks like [_dropdownField] but opens a searchable bottom sheet
+  /// instead of a native dropdown menu — used for State/District/City,
+  /// where the option lists can run into the hundreds.
+  Widget _searchableDropdownField({
+    required BuildContext context,
+    required String title,
+    required String? value,
+    required String hint,
+    required List<String> options,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: options.isEmpty
+          ? null
+          : () => _openSearchablePicker(
+                context: context,
+                title: title,
+                options: options,
+                selected: value,
+                onSelected: onChanged,
+              ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                value ?? hint,
+                style: AppTextStyles.body.copyWith(
+                  color: value == null
+                      ? AppColors.textMuted
+                      : AppColors.textPrimary,
+                ),
+              ),
+            ),
+            Icon(Icons.keyboard_arrow_down_rounded,
+                color: AppColors.textMuted),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openSearchablePicker({
+    required BuildContext context,
+    required String title,
+    required List<String> options,
+    required String? selected,
+    required ValueChanged<String?> onSelected,
+  }) {
+    return showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surfaceElevated,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return _SearchablePickerSheet(
+          title: title,
+          options: options,
+          selected: selected,
+          onSelected: (v) {
+            onSelected(v);
+            Navigator.of(sheetContext).pop();
+          },
+        );
+      },
     );
   }
 
@@ -284,6 +374,139 @@ class PartyFormView extends GetView<PartyController> {
           onChanged: (v) {
             if (v != null) controller.formBalanceType.value = v;
           },
+        ),
+      ),
+    );
+  }
+}
+
+/// The search + list content shown inside the bottom sheet opened by
+/// [PartyFormView._openSearchablePicker]. Stateful only for the live
+/// search filter — the actual selection is reported straight back
+/// through [onSelected].
+class _SearchablePickerSheet extends StatefulWidget {
+  const _SearchablePickerSheet({
+    required this.title,
+    required this.options,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final String title;
+  final List<String> options;
+  final String? selected;
+  final ValueChanged<String?> onSelected;
+
+  @override
+  State<_SearchablePickerSheet> createState() =>
+      _SearchablePickerSheetState();
+}
+
+class _SearchablePickerSheetState extends State<_SearchablePickerSheet> {
+  final _searchCtrl = TextEditingController();
+  late List<String> _filtered = widget.options;
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    final q = query.trim().toLowerCase();
+    setState(() {
+      _filtered = q.isEmpty
+          ? widget.options
+          : widget.options
+              .where((o) => o.toLowerCase().contains(q))
+              .toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.75,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(widget.title,
+                          style: AppTextStyles.body.copyWith(
+                            fontWeight: FontWeight.w600,
+                          )),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close, color: AppColors.textMuted),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: TextField(
+                  controller: _searchCtrl,
+                  autofocus: true,
+                  onChanged: _onSearchChanged,
+                  style: AppTextStyles.body
+                      .copyWith(color: AppColors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'Search...',
+                    prefixIcon: Icon(Icons.search, color: AppColors.textMuted),
+                    filled: true,
+                    fillColor: AppColors.midnight,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: _filtered.isEmpty
+                    ? Center(
+                        child: Text('No matches',
+                            style: AppTextStyles.caption),
+                      )
+                    : ListView.builder(
+                        itemCount: _filtered.length,
+                        itemBuilder: (context, index) {
+                          final option = _filtered[index];
+                          final isSelected = option == widget.selected;
+                          return ListTile(
+                            title: Text(
+                              option,
+                              style: AppTextStyles.body.copyWith(
+                                color: isSelected
+                                    ? AppColors.gold
+                                    : AppColors.textPrimary,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                            trailing: isSelected
+                                ? Icon(Icons.check_circle,
+                                    color: AppColors.gold)
+                                : null,
+                            onTap: () => widget.onSelected(option),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );

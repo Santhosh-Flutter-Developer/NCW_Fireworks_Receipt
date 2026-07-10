@@ -6,6 +6,13 @@ extension BalanceTypeX on BalanceType {
 
 class PartyModel {
   final String id;
+
+  /// The party's real identifier on the server (`party_id` from
+  /// `party.php`), when known. `null` for parties that only exist
+  /// locally (e.g. dummy/demo rows, or a row created before the API
+  /// returned one) — editing such a row can't be sent to the API yet
+  /// since there's no id for the server to match against.
+  String? serverPartyId;
   String agent;
   String name;
   String phone;
@@ -14,6 +21,7 @@ class PartyModel {
   String state;
   String district;
   String city;
+  String othersCity;
   String pincode;
   String identification;
   String gstin;
@@ -23,6 +31,7 @@ class PartyModel {
 
   PartyModel({
     required this.id,
+    this.serverPartyId,
     this.agent = '',
     required this.name,
     this.phone = '',
@@ -31,6 +40,7 @@ class PartyModel {
     this.state = 'Tamil Nadu',
     this.district = '',
     this.city = '',
+    this.othersCity = '',
     this.pincode = '',
     this.identification = '',
     this.gstin = '',
@@ -48,4 +58,7 @@ class PartyModel {
   }
 
   String get agentLabel => agent.isEmpty ? '-' : agent;
+
+  String get cityLabel =>
+      city == 'Others' && othersCity.isNotEmpty ? othersCity : city;
 }
