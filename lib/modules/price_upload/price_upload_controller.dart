@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/utils/excel_exporter.dart';
 import '../../data/models/product_price_list_model.dart';
 import '../../data/respositories/product_price_repository.dart';
 
@@ -24,6 +25,12 @@ class PriceUploadController extends GetxController {
 
   final isLoading = false.obs;
   final RxnString errorText = RxnString();
+  final isExporting = false.obs;
+
+  /// Large enough to pull every row matching the current filters in one
+  /// call — export should cover the whole filtered list, not just the
+  /// current page.
+  static const int _exportPageLimit = 100000;
 
   @override
   void onInit() {
@@ -105,6 +112,50 @@ class PriceUploadController extends GetxController {
   void toggleViewMode(bool table) => isTableView.value = table;
 
   void retry() => fetchPriceList();
+
+  /// Exports S.No, Product Name and Price for every row matching the
+  /// current Pricelist/Product filters (not just the current page) to
+  /// an .xlsx file, then hands it to the platform to save/download.
+  /// Works on Web, Android, iOS, Windows, macOS and Linux.
+  Future<void> exportToExcel() async {
+    if (isExporting.value) return;
+    isExporting.value = true;
+    try {
+      final result = await _repository.fetchPriceList(
+        pricelistId: filterPricelistId.value ?? '',
+        productId: filterProductId.value ?? '',
+        pageNumber: 1,
+        pageLimit: _exportPageLimit,
+      );
+
+      if (result.rows.isEmpty) {
+        Get.snackbar('Nothing to export', 'There are no prices to export.',
+            snackPosition: SnackPosition.BOTTOM);
+        return;
+      }
+
+      await ExcelExporter.export(
+        fileName:
+            'product_price_${DateTime.now().millisecondsSinceEpoch}',
+        headers: const ['S.No', 'Product Name', 'Price'],
+        rows: result.rows
+            .map((row) => [row.sno, row.productName, row.price])
+            .toList(),
+      );
+
+      Get.snackbar('Exported', 'Product price list exported successfully.',
+          snackPosition: SnackPosition.BOTTOM);
+    } on ApiException catch (e) {
+      Get.snackbar('Export failed', e.message,
+          snackPosition: SnackPosition.BOTTOM);
+    } catch (_) {
+      Get.snackbar(
+          'Export failed', 'Could not export the price list. Try again.',
+          snackPosition: SnackPosition.BOTTOM);
+    } finally {
+      isExporting.value = false;
+    }
+  }
 
   /// Delete/Upload aren't backed by an API yet — surface that clearly
   /// instead of pretending to mutate server data that a refresh would

@@ -33,12 +33,16 @@ class PriceUploadListView extends GetView<PriceUploadController> {
               children: [
                 _PageSizeSelector(controller: controller),
                 const Spacer(),
-                _CircleIconButton(
-                  icon: Icons.file_download_rounded,
-                  color: AppColors.success,
-                  tooltip: 'Export',
-                  onTap: () => Get.snackbar('Export', 'Coming soon',
-                      snackPosition: SnackPosition.BOTTOM),
+                Obx(
+                  () => _CircleIconButton(
+                    icon: Icons.file_download_rounded,
+                    color: AppColors.success,
+                    tooltip: 'Export',
+                    isBusy: controller.isExporting.value,
+                    onTap: controller.isExporting.value
+                        ? null
+                        : controller.exportToExcel,
+                  ),
                 ),
                 const SizedBox(
                   width: 8.0,
@@ -253,7 +257,8 @@ class _CircleIconButton extends StatelessWidget {
   final Color color;
   final Color iconColor;
   final String tooltip;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final bool isBusy;
 
   const _CircleIconButton({
     required this.icon,
@@ -261,6 +266,7 @@ class _CircleIconButton extends StatelessWidget {
     this.iconColor = Colors.white,
     required this.tooltip,
     required this.onTap,
+    this.isBusy = false,
   });
 
   @override
@@ -268,14 +274,23 @@ class _CircleIconButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: color,
+        color: isBusy ? color.withOpacity(0.6) : color,
         shape: const CircleBorder(),
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: Icon(icon, size: 18, color: iconColor),
+            child: isBusy
+                ? SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(iconColor),
+                    ),
+                  )
+                : Icon(icon, size: 18, color: iconColor),
           ),
         ),
       ),
