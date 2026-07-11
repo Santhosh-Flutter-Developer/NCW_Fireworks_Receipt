@@ -3,12 +3,15 @@ import 'billing_item_model.dart';
 class QuotationModel {
   final String id;
   final String quotationNo;
+
+  /// The real `quotation_id` on the server, once known. `null` for rows
+  /// that only exist locally. Sent back as `edit_id` when saving.
+  String? serverQuotationId;
   String partyId;
   String partyName;
-  String agentName;
+  String pricelistId;
   String pricelistName;
   DateTime date;
-  DateTime validTill;
   List<BillingItemModel> items;
   DocStatus status;
   String notes;
@@ -22,15 +25,21 @@ class QuotationModel {
   double section2Discount;
   double roundOff;
 
+  /// `quotation_listing` only returns a grand total and a qty label per
+  /// row — not the full line items. When set (list-sourced rows), [total]
+  /// and [qtyLabel] read from these instead of recomputing from [items].
+  double? serverGrandTotal;
+  String? serverQtyLabel;
+
   QuotationModel({
     required this.id,
     required this.quotationNo,
+    this.serverQuotationId,
     required this.partyId,
     required this.partyName,
-    this.agentName = 'Direct',
+    this.pricelistId = '',
     this.pricelistName = '',
     required this.date,
-    required this.validTill,
     required this.items,
     this.status = DocStatus.draft,
     this.notes = '',
@@ -39,6 +48,8 @@ class QuotationModel {
     this.section2Add = 0,
     this.section2Discount = 0,
     this.roundOff = 0,
+    this.serverGrandTotal,
+    this.serverQtyLabel,
   });
 
   List<BillingItemModel> get section1Items =>
@@ -54,7 +65,8 @@ class QuotationModel {
   double get subTotal => section1Total + section2Total;
   double get adjustments =>
       (section1Add - section1Discount) + (section2Add - section2Discount);
-  double get total => subTotal + adjustments + roundOff;
+  double get total =>
+      serverGrandTotal ?? (subTotal + adjustments + roundOff);
 
   /// Kept for screens/dashboards that only care about the grand total.
   double get grandTotal => total;
@@ -63,6 +75,9 @@ class QuotationModel {
 
   /// e.g. "125 Case" — matches the "Bill Qty" column on the web app.
   String get qtyLabel {
+    if (serverQtyLabel != null && serverQtyLabel!.isNotEmpty) {
+      return serverQtyLabel!;
+    }
     if (items.isEmpty) return '0';
     final unit = items.first.unit.isNotEmpty ? items.first.unit : 'Pcs';
     return '$totalQty $unit';

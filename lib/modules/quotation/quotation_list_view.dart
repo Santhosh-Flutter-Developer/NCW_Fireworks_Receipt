@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/responsive.dart';
+import '../../data/models/billing_item_model.dart';
 import '../../data/models/quotation_model.dart';
 import '../../routes/app_routes.dart';
 import '../../widgets/app_data_table.dart';
@@ -61,6 +62,13 @@ class QuotationListView extends GetView<QuotationController> {
             ),
             const SizedBox(height: 12),
             Obx(() {
+              if (controller.isLoadingList.value) {
+                return  Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40),
+                  child: Center(
+                      child: CircularProgressIndicator(color: AppColors.gold)),
+                );
+              }
               final list = controller.pagedFiltered;
               if (list.isEmpty) {
                 return const Padding(
@@ -97,7 +105,7 @@ class QuotationListView extends GetView<QuotationController> {
 }
 
 // ---------------------------------------------------------------------------
-// Filters: From Date / To Date / Bill No. search / Agent / Party
+// Filters: From Date / To Date / Bill No. search / Party
 // ---------------------------------------------------------------------------
 
 class _FilterBar extends StatelessWidget {
@@ -152,27 +160,16 @@ class _FilterBar extends StatelessWidget {
         ),
         Row(
           children: [
-            Obx(() => Expanded(
-                  child: _DropdownField(
-                    label: 'Agent',
-                    value: controller.filterAgent.value,
-                    items: controller.agents,
-                    onChanged: controller.setAgentFilter,
-                  ),
-                )),
-            const SizedBox(
-              width: 10.0,
-            ),
-            Obx(() => Expanded(
-                  child: _DropdownField(
+            Expanded(
+              child: Obx(() => _DropdownField(
                     label: 'Party',
                     value: controller.filterParty.value,
                     items: controller.parties.map((p) => p.name).toList(),
                     onChanged: controller.setPartyFilter,
-                  ),
-                )),
+                  )),
+            ),
           ],
-        )
+        ),
       ],
     );
   }
@@ -398,7 +395,6 @@ class _QuotationTable extends StatelessWidget {
         'S.No',
         'Bill Date',
         'Bill Number',
-        'Agent Name',
         'Party Name',
         'Bill Value',
         'Bill Qty',
@@ -410,7 +406,6 @@ class _QuotationTable extends StatelessWidget {
           Text('${startIndex + i + 1}', style: AppTextStyles.body),
           Text(df.format(q.date), style: AppTextStyles.body),
           Text(q.quotationNo, style: AppTextStyles.bodyStrong),
-          Text(q.agentName, style: AppTextStyles.body),
           SizedBox(
             width: 160,
             child: Column(
@@ -477,9 +472,6 @@ class _QuotationTile extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(quotation.partyName, style: AppTextStyles.body),
-              const SizedBox(height: 2),
-              Text('Agent: ${quotation.agentName}',
-                  style: AppTextStyles.caption),
               const SizedBox(height: 10),
               Row(
                 children: [
@@ -521,35 +513,26 @@ class _ActionIcons extends StatelessWidget {
   final QuotationController controller;
   const _ActionIcons({required this.quotation, required this.controller});
 
-  void _notReady(String action) {
-    Get.snackbar(action, 'Coming soon', snackPosition: SnackPosition.BOTTOM);
-  }
-
   @override
   Widget build(BuildContext context) {
+    final isDraft = quotation.status == DocStatus.draft;
+    final isCancelled = quotation.status == DocStatus.cancelled;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // IconButton(
-        //   tooltip: 'Print',
-        //   visualDensity: VisualDensity.compact,
-        //   onPressed: () => _notReady('Print'),
-        //   icon: Icon(Icons.print_rounded, color: AppColors.ember, size: 18),
-        // ),
-        // IconButton(
-        //   tooltip: 'Download',
-        //   visualDensity: VisualDensity.compact,
-        //   onPressed: () => _notReady('Download'),
-        //   icon: Icon(Icons.file_download_rounded,
-        //       color: AppColors.skyBlue, size: 18),
-        // ),
-        // IconButton(
-        //   tooltip: 'Convert to Invoice',
-        //   visualDensity: VisualDensity.compact,
-        //   onPressed: () => _notReady('Convert'),
-        //   icon: Icon(Icons.swap_horiz_rounded,
-        //       color: AppColors.magenta, size: 18),
-        // ),
+        IconButton(
+          tooltip: 'Print',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => controller.printQuotation(quotation),
+          icon: Icon(Icons.print_rounded, color: AppColors.ember, size: 18),
+        ),
+        IconButton(
+          tooltip: 'Download',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => controller.downloadQuotation(quotation),
+          icon: Icon(Icons.file_download_rounded,
+              color: AppColors.skyBlue, size: 18),
+        ),
         IconButton(
           tooltip: 'Edit',
           visualDensity: VisualDensity.compact,
@@ -559,15 +542,46 @@ class _ActionIcons extends StatelessWidget {
           },
           icon: Icon(Icons.edit_rounded, color: AppColors.teal, size: 18),
         ),
-        IconButton(
-          tooltip: 'Delete',
-          visualDensity: VisualDensity.compact,
-          onPressed: () => controller.deleteQuotation(quotation),
-          icon: Icon(Icons.delete_outline_rounded,
-              color: AppColors.danger, size: 18),
-        ),
+        if (!isCancelled)
+          IconButton(
+            tooltip: isDraft ? 'Delete' : 'Cancel',
+            visualDensity: VisualDensity.compact,
+            onPressed: () => _confirmDelete(context, isDraft),
+            icon: Icon(Icons.delete_outline_rounded,
+                color: AppColors.danger, size: 18),
+          ),
       ],
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, bool isDraft) async {
+    final confirmed = await Get.dialog<bool>(
+      AlertDialog(
+        backgroundColor: AppColors.surfaceElevated,
+        title: Text(isDraft ? 'Delete draft?' : 'Cancel quotation?',
+            style: AppTextStyles.h3),
+        content: Text(
+          isDraft
+              ? '${quotation.quotationNo} will be permanently deleted.'
+              : '${quotation.quotationNo} will be marked as cancelled.',
+          style: AppTextStyles.body,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Get.back(result: true),
+            child: Text(isDraft ? 'Delete' : 'Cancel Quotation',
+                style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await controller.deleteQuotation(quotation);
+    }
   }
 }
 
@@ -582,11 +596,9 @@ class _Pager extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final total = controller.filtered.length;
-      final pages = controller.totalPages(total);
+      final countOnPage = controller.quotations.length;
+      final pages = controller.totalPages;
       final page = controller.currentPage.value;
-      final start = total == 0 ? 0 : (page - 1) * controller.pageSize.value + 1;
-      final end = (start + controller.pageSize.value - 1).clamp(0, total);
 
       return Wrap(
         alignment: WrapAlignment.spaceBetween,
@@ -595,19 +607,14 @@ class _Pager extends StatelessWidget {
         runSpacing: 8,
         children: [
           Text(
-            total == 0
-                ? 'Showing 0 entries'
-                : 'Showing $start to $end of $total entries',
+            countOnPage == 0
+                ? 'No entries on this page'
+                : 'Showing $countOnPage ${countOnPage == 1 ? 'entry' : 'entries'}',
             style: AppTextStyles.caption,
           ),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                onPressed: page > 1 ? () => controller.goToPage(1) : null,
-                icon: const Icon(Icons.first_page_rounded, size: 18),
-              ),
               IconButton(
                 visualDensity: VisualDensity.compact,
                 onPressed:
@@ -621,7 +628,7 @@ class _Pager extends StatelessWidget {
                   gradient: AppColors.goldGradient,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text('$page',
+                child: Text('$page / $pages',
                     style: AppTextStyles.bodyStrong
                         .copyWith(color: AppColors.textOnGold)),
               ),
@@ -630,12 +637,6 @@ class _Pager extends StatelessWidget {
                 onPressed:
                     page < pages ? () => controller.goToPage(page + 1) : null,
                 icon: const Icon(Icons.chevron_right_rounded, size: 18),
-              ),
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                onPressed:
-                    page < pages ? () => controller.goToPage(pages) : null,
-                icon: const Icon(Icons.last_page_rounded, size: 18),
               ),
             ],
           ),

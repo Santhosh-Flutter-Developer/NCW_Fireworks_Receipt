@@ -403,10 +403,8 @@ class DummyData {
         quotationNo: 'QUT001/26-27',
         partyId: 'P001',
         partyName: 'Sri Lakshmi Traders',
-        agentName: 'Mahendran',
         pricelistName: 'MB JUNE RETAIL SALE PRICE LIST',
         date: DateTime(2026, 7, 1),
-        validTill: DateTime(2026, 7, 15),
         items: [
           BillingItemModel(
               productId: prods[0].id,
@@ -429,10 +427,8 @@ class DummyData {
         quotationNo: 'QUT002/26-27',
         partyId: 'P006',
         partyName: 'THARUN',
-        agentName: 'Direct',
         pricelistName: 'MB JUNE RETAIL SALE PRICE LIST',
         date: DateTime(2026, 6, 1),
-        validTill: DateTime(2026, 6, 15),
         items: [
           BillingItemModel(
               productId: prods[6].id,
@@ -448,10 +444,8 @@ class DummyData {
         quotationNo: 'QUT003/26-27',
         partyId: 'P006',
         partyName: 'Anbu & Sons',
-        agentName: 'Karthik',
         pricelistName: 'MB JUNE RETAIL SALE PRICE LIST',
         date: DateTime(2026, 6, 28),
-        validTill: DateTime(2026, 7, 5),
         items: [
           BillingItemModel(
               productId: prods[4].id,
@@ -473,10 +467,8 @@ class DummyData {
         quotationNo: 'QUT004/26-27',
         partyId: 'P002',
         partyName: 'Kaveri Crackers Wholesale',
-        agentName: 'Priya Dharshini',
         pricelistName: 'MB JUNE RETAIL SALE PRICE LIST',
         date: DateTime(2026, 6, 20),
-        validTill: DateTime(2026, 6, 30),
         items: [
           BillingItemModel(
               productId: prods[1].id,
@@ -498,7 +490,6 @@ class DummyData {
         estimationNo: 'EST037/26-27',
         partyId: 'P002',
         partyName: 'Kaveri Crackers Wholesale',
-        agentName: 'Direct',
         pricelistName: '2026 MB June Whole Sale Price',
         date: DateTime(2026, 7, 6),
         items: [
@@ -516,7 +507,6 @@ class DummyData {
         estimationNo: 'EST036/26-27',
         partyId: 'P001',
         partyName: 'Sri Lakshmi Traders',
-        agentName: 'Ravikumar',
         pricelistName: '2026 MB June Whole Sale Price',
         date: DateTime(2026, 7, 4),
         items: [
@@ -533,7 +523,6 @@ class DummyData {
         estimationNo: 'EST035/26-27',
         partyId: 'P006',
         partyName: 'Anbu & Sons',
-        agentName: 'Direct',
         pricelistName: '2026 MB June Whole Sale Price',
         date: DateTime(2026, 6, 30),
         items: [
@@ -556,7 +545,6 @@ class DummyData {
         estimationNo: 'EST034/26-27',
         partyId: 'P003',
         partyName: 'Meenakshi Fireworks',
-        agentName: 'Suresh',
         pricelistName: '2026 MB June Whole Sale Price',
         date: DateTime(2026, 6, 28),
         items: [
@@ -573,7 +561,6 @@ class DummyData {
         estimationNo: 'EST033/26-27',
         partyId: 'P004',
         partyName: 'Vinayaga Traders',
-        agentName: 'Direct',
         pricelistName: '2026 MB June Whole Sale Price',
         date: DateTime(2026, 6, 25),
         items: [
@@ -590,7 +577,6 @@ class DummyData {
         estimationNo: 'EST032/26-27',
         partyId: 'P005',
         partyName: 'Om Sakthi Crackers',
-        agentName: 'Ravikumar',
         pricelistName: '2026 MB June Whole Sale Price',
         date: DateTime(2026, 6, 20),
         items: [

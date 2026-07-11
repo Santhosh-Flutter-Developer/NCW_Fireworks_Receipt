@@ -4,7 +4,8 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/models/party_model.dart';
-import '../../data/models/product_model.dart';
+import '../../data/models/quotation/id_name.dart';
+import '../../data/models/quotation/quotation_product_list_response_model.dart';
 import '../../widgets/common_widgets.dart';
 import 'quotation_controller.dart';
 
@@ -30,89 +31,14 @@ class QuotationFormView extends GetView<QuotationController> {
             child: Container(
               decoration: BoxDecoration(gradient: AppColors.backgroundGradient),
               child: SafeArea(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 160),
-                  children: [
-                    Obx(() => _GrandTotalBanner(total: controller.formTotal)),
-                    const SizedBox(height: 18),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: _dateTile(
-                            context,
-                            label: 'Bill Date *',
-                            date: controller.quotationDate.value,
-                            onTap: () =>
-                                _pickDate(context, controller.quotationDate),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Obx(() => _pickerTile(
-                                label: 'Pricelist *',
-                                value: controller.selectedPricelist.value,
-                                onTap: () => _openPricelistPicker(context),
-                              )),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Obx(() => _pickerTile(
-                                label: 'Agent',
-                                value: controller.selectedAgent.value,
-                                placeholder: 'Direct',
-                                onTap: () => _openAgentPicker(context),
-                              )),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Obx(() => _pickerTile(
-                                label: 'Party *',
-                                value: controller.selectedParty.value?.name,
-                                onTap: () => _openPartyPicker(context),
-                              )),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 22),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Items', style: AppTextStyles.h3),
-                        TextButton.icon(
-                          onPressed: () => _openProductPicker(context),
-                          icon: const Icon(Icons.add_rounded, size: 18),
-                          label: const Text('Add Item'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Obx(() {
-                      if (controller.formItems.isEmpty) {
-                        return const EmptyState(
-                          icon: Icons.shopping_basket_outlined,
-                          title: 'No items added',
-                          subtitle:
-                              'Tap "Add Item" to add products to this quotation.',
-                        );
-                      }
-                      return Column(
-                        children: [
-                          _sectionBlock(section: 1, label: 'Section 1'),
-                          const SizedBox(height: 14),
-                          _sectionBlock(section: 2, label: 'Section 2'),
-                        ],
-                      );
-                    }),
-                    const SizedBox(height: 14),
-                    Obx(() => _totalsCard()),
-                  ],
-                ),
+                child: Obx(() {
+                  if (controller.isLoadingForm.value) {
+                    return  Center(
+                      child: CircularProgressIndicator(color: AppColors.gold),
+                    );
+                  }
+                  return _formBody(context);
+                }),
               ),
             ),
           ),
@@ -140,13 +66,15 @@ class QuotationFormView extends GetView<QuotationController> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-                child: Row(
+                child: Obx(() => Row(
                   children: [
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.magenta),
-                        onPressed: () => controller.save(asDraft: true),
+                        onPressed: controller.isSaving.value
+                            ? null
+                            : () => controller.save(asDraft: true),
                         child: const Text('Draft'),
                       ),
                     ),
@@ -155,12 +83,21 @@ class QuotationFormView extends GetView<QuotationController> {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.success),
-                        onPressed: () => controller.save(asDraft: false),
-                        child: const Text('Confirm'),
+                        onPressed: controller.isSaving.value
+                            ? null
+                            : () => controller.save(asDraft: false),
+                        child: controller.isSaving.value
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Confirm'),
                       ),
                     ),
                   ],
-                ),
+                )),
               ),
             ],
           )
@@ -210,6 +147,74 @@ class QuotationFormView extends GetView<QuotationController> {
   }
 
   // ---- Section of items -----------------------------------------------
+
+  Widget _formBody(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 160),
+      children: [
+        Obx(() => _GrandTotalBanner(total: controller.formTotal)),
+        const SizedBox(height: 18),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _dateTile(
+                context,
+                label: 'Bill Date *',
+                date: controller.quotationDate.value,
+                onTap: () => _pickDate(context, controller.quotationDate),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Obx(() => _pickerTile(
+                    label: 'Pricelist *',
+                    value: controller.selectedPricelist.value,
+                    onTap: () => _openPricelistPicker(context),
+                  )),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Obx(() => _pickerTile(
+              label: 'Party *',
+              value: controller.selectedParty.value?.name,
+              onTap: () => _openPartyPicker(context),
+            )),
+        const SizedBox(height: 22),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Items', style: AppTextStyles.h3),
+            TextButton.icon(
+              onPressed: () => _openProductPicker(context),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text('Add Item'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Obx(() {
+          if (controller.formItems.isEmpty) {
+            return const EmptyState(
+              icon: Icons.shopping_basket_outlined,
+              title: 'No items added',
+              subtitle: 'Tap "Add Item" to add products to this quotation.',
+            );
+          }
+          return Column(
+            children: [
+              _sectionBlock(section: 1, label: 'Section 1'),
+              const SizedBox(height: 14),
+              _sectionBlock(section: 2, label: 'Section 2'),
+            ],
+          );
+        }),
+        const SizedBox(height: 14),
+        Obx(() => _totalsCard()),
+      ],
+    );
+  }
 
   Widget _sectionBlock({required int section, required String label}) {
     return Obx(() {
@@ -576,29 +581,17 @@ class QuotationFormView extends GetView<QuotationController> {
   }
 
   void _openPricelistPicker(BuildContext context) {
-    _openListSheet(
+    _openIdNameSheet(
       title: 'Select Pricelist',
-      items: controller.pricelistNames,
-      itemLabel: (e) => e,
-      onSelected: (e) => controller.selectedPricelist.value = e,
+      items: controller.pricelistOptions,
+      onSelected: (idn) => controller.selectPricelist(idn),
     );
   }
 
-  void _openAgentPicker(BuildContext context) {
-    _openListSheet(
-      title: 'Select Agent',
-      items: ['Direct', ...controller.agents],
-      itemLabel: (e) => e,
-      onSelected: (e) =>
-          controller.selectedAgent.value = e == 'Direct' ? null : e,
-    );
-  }
-
-  void _openListSheet({
+  void _openIdNameSheet({
     required String title,
-    required List<String> items,
-    required String Function(String) itemLabel,
-    required ValueChanged<String> onSelected,
+    required List<IdName> items,
+    required ValueChanged<IdName> onSelected,
   }) {
     Get.bottomSheet(
       Container(
@@ -614,22 +607,27 @@ class QuotationFormView extends GetView<QuotationController> {
             Text(title, style: AppTextStyles.h3),
             const SizedBox(height: 14),
             Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: items.length,
-                itemBuilder: (context, i) {
-                  final item = items[i];
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title:
-                        Text(itemLabel(item), style: AppTextStyles.bodyStrong),
-                    onTap: () {
-                      onSelected(item);
-                      Get.back();
-                    },
-                  );
-                },
-              ),
+              child: items.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Text('Nothing available',
+                          style: AppTextStyles.caption),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: items.length,
+                      itemBuilder: (context, i) {
+                        final item = items[i];
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(item.name, style: AppTextStyles.bodyStrong),
+                          onTap: () {
+                            onSelected(item);
+                            Get.back();
+                          },
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -652,28 +650,30 @@ class QuotationFormView extends GetView<QuotationController> {
             Text('Select Party', style: AppTextStyles.h3),
             const SizedBox(height: 14),
             Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: controller.parties.length,
-                itemBuilder: (context, i) {
-                  final PartyModel p = controller.parties[i];
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      backgroundColor: AppColors.surfaceHigh,
-                      child: Text(p.initials,
-                          style: AppTextStyles.caption
-                              .copyWith(color: AppColors.textPrimary)),
-                    ),
-                    title: Text(p.name, style: AppTextStyles.bodyStrong),
-                    subtitle: Text(p.phone, style: AppTextStyles.caption),
-                    onTap: () {
-                      controller.selectedParty.value = p;
-                      Get.back();
+              child: Obx(() => ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: controller.parties.length,
+                    itemBuilder: (context, i) {
+                      final PartyModel p = controller.parties[i];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                          backgroundColor: AppColors.surfaceHigh,
+                          child: Text(p.initials,
+                              style: AppTextStyles.caption
+                                  .copyWith(color: AppColors.textPrimary)),
+                        ),
+                        title: Text(p.name, style: AppTextStyles.bodyStrong),
+                        subtitle: p.phone.isEmpty
+                            ? null
+                            : Text(p.phone, style: AppTextStyles.caption),
+                        onTap: () {
+                          controller.selectedParty.value = p;
+                          Get.back();
+                        },
+                      );
                     },
-                  );
-                },
-              ),
+                  )),
             ),
           ],
         ),
@@ -682,7 +682,13 @@ class QuotationFormView extends GetView<QuotationController> {
   }
 
   void _openProductPicker(BuildContext context) {
-    final section = 1.obs;
+    if (controller.selectedPricelistId.value == null ||
+        controller.selectedPricelistId.value!.isEmpty) {
+      Get.snackbar('Select a pricelist first',
+          'Products depend on the pricelist chosen above.',
+          snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
     Get.bottomSheet(
       Container(
         decoration: BoxDecoration(
@@ -694,74 +700,60 @@ class QuotationFormView extends GetView<QuotationController> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Select Product', style: AppTextStyles.h3),
-                Obx(() => Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceHigh,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [1, 2].map((s) {
-                          final selected = section.value == s;
-                          return InkWell(
-                            borderRadius: BorderRadius.circular(8),
-                            onTap: () => section.value = s,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                gradient:
-                                    selected ? AppColors.goldGradient : null,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text('S$s',
-                                  style: AppTextStyles.caption.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: selected
-                                        ? AppColors.textOnGold
-                                        : AppColors.textSecondary,
-                                  )),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    )),
-              ],
+            Text('Select Product', style: AppTextStyles.h3),
+            const SizedBox(height: 4),
+            Text(
+              'The section (1 or 2) is set automatically from the pricelist.',
+              style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
             ),
             const SizedBox(height: 14),
             Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: controller.products.length,
-                itemBuilder: (context, i) {
-                  final ProductModel p = controller.products[i];
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        gradient: AppColors.tealGradient,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.celebration_rounded,
-                          color: Colors.white, size: 18),
-                    ),
-                    title: Text(p.name, style: AppTextStyles.bodyStrong),
-                    subtitle: Text('₹${p.price.toStringAsFixed(0)} / ${p.unit}',
-                        style: AppTextStyles.caption),
-                    onTap: () {
-                      controller.addProductToForm(p, section: section.value);
-                      Get.back();
-                    },
+              child: Obx(() {
+                if (controller.isLoadingProducts.value) {
+                  return  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                        child: CircularProgressIndicator(color: AppColors.gold)),
                   );
-                },
-              ),
+                }
+                if (controller.productOptions.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Text('No products found for this pricelist',
+                        style: AppTextStyles.caption),
+                  );
+                }
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: controller.productOptions.length,
+                  itemBuilder: (context, i) {
+                    final QuotationProductOption p =
+                        controller.productOptions[i];
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          gradient: AppColors.tealGradient,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.celebration_rounded,
+                            color: Colors.white, size: 18),
+                      ),
+                      title:
+                          Text(p.productName, style: AppTextStyles.bodyStrong),
+                      onTap: () async {
+                        Get.back();
+                        await controller.addProductById(
+                          productId: p.productId,
+                          productName: p.productName,
+                        );
+                      },
+                    );
+                  },
+                );
+              }),
             ),
           ],
         ),
@@ -783,8 +775,6 @@ class QuotationFormView extends GetView<QuotationController> {
                   children: [
                     Text(
                         'Party: ${controller.selectedParty.value?.name ?? '-'}',
-                        style: AppTextStyles.body),
-                    Text('Agent: ${controller.selectedAgent.value ?? 'Direct'}',
                         style: AppTextStyles.body),
                     Text('Date: ${_df.format(controller.quotationDate.value)}',
                         style: AppTextStyles.body),
