@@ -7,6 +7,7 @@ import '../../data/models/party_model.dart';
 import '../../data/models/quotation/id_name.dart';
 import '../../data/models/quotation/quotation_product_list_response_model.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/searchable_picker_sheet.dart';
 import 'quotation_controller.dart';
 
 class QuotationFormView extends GetView<QuotationController> {
@@ -581,103 +582,38 @@ class QuotationFormView extends GetView<QuotationController> {
   }
 
   void _openPricelistPicker(BuildContext context) {
-    _openIdNameSheet(
+    showSearchablePickerSheet<IdName>(
       title: 'Select Pricelist',
-      items: controller.pricelistOptions,
+      searchHint: 'Search pricelist',
+      itemsGetter: () => controller.pricelistOptions,
+      labelOf: (idn) => idn.name,
+      itemBuilder: (context, idn) => ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text(idn.name, style: AppTextStyles.bodyStrong),
+      ),
       onSelected: (idn) => controller.selectPricelist(idn),
     );
   }
 
-  void _openIdNameSheet({
-    required String title,
-    required List<IdName> items,
-    required ValueChanged<IdName> onSelected,
-  }) {
-    Get.bottomSheet(
-      Container(
-        decoration: BoxDecoration(
-          color: AppColors.surfaceElevated,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.all(18),
-        constraints: BoxConstraints(maxHeight: Get.height * 0.6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(title, style: AppTextStyles.h3),
-            const SizedBox(height: 14),
-            Flexible(
-              child: items.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      child: Text('Nothing available',
-                          style: AppTextStyles.caption),
-                    )
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: items.length,
-                      itemBuilder: (context, i) {
-                        final item = items[i];
-                        return ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(item.name, style: AppTextStyles.bodyStrong),
-                          onTap: () {
-                            onSelected(item);
-                            Get.back();
-                          },
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _openPartyPicker(BuildContext context) {
-    Get.bottomSheet(
-      Container(
-        decoration: BoxDecoration(
-          color: AppColors.surfaceElevated,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+    showSearchablePickerSheet<PartyModel>(
+      title: 'Select Party',
+      searchHint: 'Search party name or phone',
+      itemsGetter: () => controller.parties,
+      labelOf: (p) => '${p.name} ${p.phone}',
+      itemBuilder: (context, p) => ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: CircleAvatar(
+          backgroundColor: AppColors.surfaceHigh,
+          child: Text(p.initials,
+              style:
+                  AppTextStyles.caption.copyWith(color: AppColors.textPrimary)),
         ),
-        padding: const EdgeInsets.all(18),
-        constraints: BoxConstraints(maxHeight: Get.height * 0.6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Select Party', style: AppTextStyles.h3),
-            const SizedBox(height: 14),
-            Flexible(
-              child: Obx(() => ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: controller.parties.length,
-                    itemBuilder: (context, i) {
-                      final PartyModel p = controller.parties[i];
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: CircleAvatar(
-                          backgroundColor: AppColors.surfaceHigh,
-                          child: Text(p.initials,
-                              style: AppTextStyles.caption
-                                  .copyWith(color: AppColors.textPrimary)),
-                        ),
-                        title: Text(p.name, style: AppTextStyles.bodyStrong),
-                        subtitle: p.phone.isEmpty
-                            ? null
-                            : Text(p.phone, style: AppTextStyles.caption),
-                        onTap: () {
-                          controller.selectedParty.value = p;
-                          Get.back();
-                        },
-                      );
-                    },
-                  )),
-            ),
-          ],
-        ),
+        title: Text(p.name, style: AppTextStyles.bodyStrong),
+        subtitle:
+            p.phone.isEmpty ? null : Text(p.phone, style: AppTextStyles.caption),
       ),
+      onSelected: (p) => controller.selectedParty.value = p,
     );
   }
 
@@ -689,75 +625,34 @@ class QuotationFormView extends GetView<QuotationController> {
           snackPosition: SnackPosition.BOTTOM);
       return;
     }
-    Get.bottomSheet(
-      Container(
-        decoration: BoxDecoration(
-          color: AppColors.surfaceElevated,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+    showSearchablePickerSheet<QuotationProductOption>(
+      title: 'Select Product',
+      subtitle: 'The section (1 or 2) is set automatically from the pricelist.',
+      searchHint: 'Search product',
+      isLoadingGetter: () => controller.isLoadingProducts.value,
+      itemsGetter: () => controller.productOptions,
+      labelOf: (p) => p.productName,
+      emptyText: 'No products found for this pricelist',
+      itemBuilder: (context, p) => ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            gradient: AppColors.tealGradient,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(Icons.celebration_rounded,
+              color: Colors.white, size: 18),
         ),
-        padding: const EdgeInsets.all(18),
-        constraints: BoxConstraints(maxHeight: Get.height * 0.7),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Select Product', style: AppTextStyles.h3),
-            const SizedBox(height: 4),
-            Text(
-              'The section (1 or 2) is set automatically from the pricelist.',
-              style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
-            ),
-            const SizedBox(height: 14),
-            Flexible(
-              child: Obx(() {
-                if (controller.isLoadingProducts.value) {
-                  return  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(
-                        child: CircularProgressIndicator(color: AppColors.gold)),
-                  );
-                }
-                if (controller.productOptions.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    child: Text('No products found for this pricelist',
-                        style: AppTextStyles.caption),
-                  );
-                }
-                return ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: controller.productOptions.length,
-                  itemBuilder: (context, i) {
-                    final QuotationProductOption p =
-                        controller.productOptions[i];
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          gradient: AppColors.tealGradient,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.celebration_rounded,
-                            color: Colors.white, size: 18),
-                      ),
-                      title:
-                          Text(p.productName, style: AppTextStyles.bodyStrong),
-                      onTap: () async {
-                        Get.back();
-                        await controller.addProductById(
-                          productId: p.productId,
-                          productName: p.productName,
-                        );
-                      },
-                    );
-                  },
-                );
-              }),
-            ),
-          ],
-        ),
+        title: Text(p.productName, style: AppTextStyles.bodyStrong),
       ),
+      onSelected: (p) async {
+        await controller.addProductById(
+          productId: p.productId,
+          productName: p.productName,
+        );
+      },
     );
   }
 

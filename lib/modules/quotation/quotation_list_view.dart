@@ -5,11 +5,13 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/responsive.dart';
 import '../../data/models/billing_item_model.dart';
+import '../../data/models/party_model.dart';
 import '../../data/models/quotation_model.dart';
 import '../../routes/app_routes.dart';
 import '../../widgets/app_data_table.dart';
 import '../../widgets/app_scaffold.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/searchable_picker_sheet.dart';
 import '../../widgets/view_mode_toggle.dart';
 import 'quotation_controller.dart';
 
@@ -161,11 +163,10 @@ class _FilterBar extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Obx(() => _DropdownField(
-                    label: 'Party',
+              child: Obx(() => _PartyFilterField(
                     value: controller.filterParty.value,
-                    items: controller.parties.map((p) => p.name).toList(),
-                    onChanged: controller.setPartyFilter,
+                    parties: controller.parties,
+                    onSelected: controller.setPartyFilter,
                   )),
             ),
           ],
@@ -232,47 +233,78 @@ class _DateField extends StatelessWidget {
   }
 }
 
-class _DropdownField extends StatelessWidget {
-  final String label;
-  final String? value;
-  final List<String> items;
-  final ValueChanged<String?> onChanged;
-  const _DropdownField({
-    required this.label,
+// ---------------------------------------------------------------------------
+// Party filter — tap to open the searchable "Select Party" sheet
+// ---------------------------------------------------------------------------
+
+class _PartyFilterField extends StatelessWidget {
+  final String? value; // party *name*, or null for "All Partys"
+  final List<PartyModel> parties;
+  final ValueChanged<String?> onSelected;
+  const _PartyFilterField({
     required this.value,
-    required this.items,
-    required this.onChanged,
+    required this.parties,
+    required this.onSelected,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider),
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => showSearchablePickerSheet<PartyModel>(
+        title: 'Select Party',
+        searchHint: 'Search party name or phone',
+        itemsGetter: () => parties,
+        labelOf: (p) => '${p.name} ${p.phone}',
+        itemBuilder: (context, p) => ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: CircleAvatar(
+            backgroundColor: AppColors.surfaceHigh,
+            child: Text(p.initials,
+                style: AppTextStyles.caption
+                    .copyWith(color: AppColors.textPrimary)),
+          ),
+          title: Text(p.name, style: AppTextStyles.bodyStrong),
+          subtitle: p.phone.isEmpty
+              ? null
+              : Text(p.phone, style: AppTextStyles.caption),
+        ),
+        onSelected: (p) => onSelected(p.name),
+        topAction: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () {
+            Get.back();
+            onSelected(null);
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Text('All Partys',
+                style: AppTextStyles.bodyStrong
+                    .copyWith(color: AppColors.gold)),
+          ),
+        ),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String?>(
-          isExpanded: true,
-          value: value,
-          hint: Text(label,
-              style: AppTextStyles.body.copyWith(color: AppColors.textMuted)),
-          icon: Icon(Icons.keyboard_arrow_down_rounded,
-              color: AppColors.textMuted),
-          style: AppTextStyles.body.copyWith(color: AppColors.textPrimary),
-          dropdownColor: AppColors.surfaceElevated,
-          items: [
-            DropdownMenuItem<String?>(
-              value: null,
-              child: Text('All $label${label.endsWith('s') ? '' : 's'}'),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                value ?? 'All Partys',
+                style: AppTextStyles.body.copyWith(
+                  color:
+                      value != null ? AppColors.textPrimary : AppColors.textMuted,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            ...items.map(
-              (e) => DropdownMenuItem<String?>(value: e, child: Text(e)),
-            ),
+            Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textMuted),
           ],
-          onChanged: onChanged,
         ),
       ),
     );
