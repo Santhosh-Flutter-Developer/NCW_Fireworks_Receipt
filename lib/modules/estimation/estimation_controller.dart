@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../core/constants/api_endpoints.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/services/session_service.dart';
 import '../../data/models/billing_item_model.dart';
@@ -14,11 +16,9 @@ import '../../data/respositories/estimate_repository.dart';
 
 /// The 3 tabs shown above the Estimate list on the web app.
 ///
-/// `estimate_listing` doesn't return a status/drafted flag per row (only
-/// id/number/date/agent/party/qty/total), so there's no server data to
-/// split rows into Active / Draft / Cancel by. The tabs stay in the UI
-/// for layout parity with the web app, but all three currently show the
-/// same server-fetched page.
+/// Each tab maps to `estimate.php`'s `drafted`/`cancelled` filters on
+/// `estimate_listing`: Active is `drafted=0, cancelled=0`, Draft is
+/// `drafted=1, cancelled=0`, Cancel is `drafted=0, cancelled=1`.
 enum EstimationTab { active, draft, cancel }
 
 extension EstimationTabX on EstimationTab {
@@ -178,7 +178,15 @@ class EstimationController extends GetxController {
         filterPartyId: _partyIdForName(filterParty.value) ?? '',
         pageNumber: currentPage.value,
         pageLimit: pageSize.value,
+        drafted: activeTab.value == EstimationTab.draft ? '1' : '0',
+        cancelled: activeTab.value == EstimationTab.cancel ? '1' : '0',
       );
+
+      final rowStatus = switch (activeTab.value) {
+        EstimationTab.active => DocStatus.active,
+        EstimationTab.draft => DocStatus.draft,
+        EstimationTab.cancel => DocStatus.cancelled,
+      };
 
       if (result.agentList.isNotEmpty) {
         agentOptions.assignAll(result.agentList);
@@ -210,7 +218,7 @@ class EstimationController extends GetxController {
           agentName: agent.isEmpty ? 'Direct' : agent,
           date: date,
           items: const [],
-          status: DocStatus.active,
+          status: rowStatus,
           serverGrandTotal: item.grandTotal,
           serverQtyLabel: item.totalQuantity,
         );
@@ -302,27 +310,59 @@ class EstimationController extends GetxController {
 
   void toggleViewMode(bool table) => isTableView.value = table;
 
-  /// There's no cancel/void endpoint exposed by `estimate.php` — this only
-  /// flips the row's status in the current in-memory page, so it reverts
-  /// on the next reload.
-  void cancelEstimation(EstimationModel estimation) {
-    estimation.status = DocStatus.cancelled;
-    estimations.refresh();
-    Get.snackbar('Cancelled', '${estimation.estimationNo} was cancelled',
-        snackPosition: SnackPosition.BOTTOM);
+  /// Cancels an active estimate (server sets `cancelled = 1`) or, for a
+  /// draft row, permanently deletes it (server sets `deleted = 1`) — the
+  /// same `delete_estimate_id` call does either, decided server-side by
+  /// the estimate's own `drafted` flag.
+  Future<void> deleteEstimation(EstimationModel estimation) async {
+    final id = estimation.serverEstimateId ?? estimation.id;
+    if (id.isEmpty) {
+      estimations.remove(estimation);
+      return;
+    }
+    final isDraft = estimation.status == DocStatus.draft;
+    try {
+      final result = await _estimateRepository.deleteEstimate(estimateId: id);
+      Get.snackbar(
+        isDraft ? 'Draft deleted' : 'Estimate cancelled',
+        result.message,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      await loadEstimates();
+    } on ApiRequestException catch (e) {
+      Get.snackbar('Could not delete', e.message,
+          snackPosition: SnackPosition.BOTTOM);
+    } on ApiException catch (e) {
+      Get.snackbar('Could not delete', e.message,
+          snackPosition: SnackPosition.BOTTOM);
+    }
   }
 
-  /// There's no delete endpoint in the API for estimates — this only
-  /// removes the row from the current in-memory page, so it reappears on
-  /// the next reload.
-  void deleteEstimation(EstimationModel estimation) {
-    estimations.remove(estimation);
-    Get.snackbar(
-      'Removed from view',
-      '${estimation.estimationNo} was removed here, but there\'s no delete API yet — it\'ll reappear on refresh.',
-      snackPosition: SnackPosition.BOTTOM,
-    );
+  // ---- Print / download report PDF ----------------------------------------
+
+  /// Opens the A4 estimate report PDF in the device's browser/PDF viewer.
+  /// Print and download both point at the same report — the viewer's own
+  /// print/save controls handle each action from there.
+  Future<void> _openEstimateReport(EstimationModel estimation) async {
+    final id = estimation.serverEstimateId ?? estimation.id;
+    if (id.isEmpty) {
+      Get.snackbar('Not available', 'This estimate has no report yet',
+          snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
+    final uri = ApiEndpoints.estimateReport(id);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened) {
+      Get.snackbar('Could not open', 'Unable to open the estimate report',
+          snackPosition: SnackPosition.BOTTOM);
+    }
   }
+
+  Future<void> printEstimate(EstimationModel estimation) =>
+      _openEstimateReport(estimation);
+
+  Future<void> downloadEstimate(EstimationModel estimation) =>
+      _openEstimateReport(estimation);
 
   // ---- Form: totals ---------------------------------------------------------
 

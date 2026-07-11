@@ -2,6 +2,7 @@ import '../../core/constants/api_endpoints.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../models/estimate/estimate_charge_type_response_model.dart';
+import '../models/estimate/estimate_delete_response_model.dart';
 import '../models/estimate/estimate_init_response_model.dart';
 import '../models/estimate/estimate_list_response_model.dart';
 import '../models/estimate/estimate_product_list_response_model.dart';
@@ -71,6 +72,11 @@ class EstimateRepository {
 
   /// Fetches a page of the estimate list, with the same From/To/search/
   /// agent/party filters as the web app's Estimate list screen.
+  ///
+  /// [drafted] and [cancelled] select which tab's rows come back — the
+  /// server's WHERE clause is `drafted = '<drafted>' AND cancelled =
+  /// '<cancelled>'`, so pass `'1'`/`'0'` explicitly for Active / Draft /
+  /// Cancel rather than leaving them blank.
   Future<EstimateListResponseModel> listEstimates({
     String filterFromDate = '',
     String filterToDate = '',
@@ -79,6 +85,8 @@ class EstimateRepository {
     String filterPartyId = '',
     int pageNumber = 1,
     int pageLimit = 10,
+    String drafted = '0',
+    String cancelled = '0',
   }) async {
     final json = await _apiClient.postJson(
       ApiEndpoints.estimate,
@@ -91,6 +99,8 @@ class EstimateRepository {
         'filter_party_id': filterPartyId,
         'page_number': pageNumber.toString(),
         'page_limit': pageLimit.toString(),
+        'drafted': drafted,
+        'cancelled': cancelled,
       },
     );
 
@@ -189,6 +199,24 @@ class EstimateRepository {
     final json = await _apiClient.postJson(ApiEndpoints.estimate, body: body);
 
     final result = EstimateSaveResponseModel.fromJson(json);
+    if (result.isSuccess) return result;
+
+    throw ApiRequestException(result.message);
+  }
+
+  /// Deletes/cancels an estimate. The server decides which based on its
+  /// own `drafted` flag: a draft is permanently deleted, anything else is
+  /// marked cancelled (soft-void — stock and payment entries are reversed
+  /// server-side either way).
+  Future<EstimateDeleteResponseModel> deleteEstimate({
+    required String estimateId,
+  }) async {
+    final json = await _apiClient.postJson(
+      ApiEndpoints.estimate,
+      body: {'delete_estimate_id': estimateId},
+    );
+
+    final result = EstimateDeleteResponseModel.fromJson(json);
     if (result.isSuccess) return result;
 
     throw ApiRequestException(result.message);

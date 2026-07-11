@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/responsive.dart';
+import '../../data/models/billing_item_model.dart';
 import '../../data/models/estimation_model.dart';
 import '../../routes/app_routes.dart';
 import '../../widgets/app_data_table.dart';
@@ -159,17 +160,17 @@ class _FilterBar extends StatelessWidget {
         ),
         Row(
           children: [
-            Obx(() => Expanded(
-                  child: _DropdownField(
-                    label: 'Agent',
-                    value: controller.filterAgent.value,
-                    items: controller.agents,
-                    onChanged: controller.setAgentFilter,
-                  ),
-                )),
-            const SizedBox(
-              width: 10.0,
-            ),
+            // Obx(() => Expanded(
+            //       child: _DropdownField(
+            //         label: 'Agent',
+            //         value: controller.filterAgent.value,
+            //         items: controller.agents,
+            //         onChanged: controller.setAgentFilter,
+            //       ),
+            //     )),
+            // const SizedBox(
+            //   width: 10.0,
+            // ),
             Obx(() => Expanded(
                   child: _DropdownField(
                     label: 'Party',
@@ -529,6 +530,34 @@ class _ActionIcons extends StatelessWidget {
   final EstimationController controller;
   const _ActionIcons({required this.estimation, required this.controller});
 
+  bool get _isDraft => estimation.status == DocStatus.draft;
+  bool get _isCancelled => estimation.status == DocStatus.cancelled;
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await Get.dialog<bool>(
+      AlertDialog(
+        backgroundColor: AppColors.surfaceElevated,
+        title: Text(_isDraft ? 'Delete Draft?' : 'Cancel Estimate?'),
+        content: Text(_isDraft
+            ? '${estimation.estimationNo} will be permanently deleted.'
+            : '${estimation.estimationNo} will be marked as cancelled.'),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Get.back(result: true),
+            child: Text(_isDraft ? 'Delete' : 'Cancel Estimate'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      controller.deleteEstimation(estimation);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -537,17 +566,13 @@ class _ActionIcons extends StatelessWidget {
         IconButton(
           tooltip: 'Print',
           visualDensity: VisualDensity.compact,
-          onPressed: () => Get.snackbar(
-              'Print', '${estimation.estimationNo} sent to printer',
-              snackPosition: SnackPosition.BOTTOM),
+          onPressed: () => controller.printEstimate(estimation),
           icon: Icon(Icons.print_rounded, color: AppColors.ember, size: 18),
         ),
         IconButton(
           tooltip: 'Download',
           visualDensity: VisualDensity.compact,
-          onPressed: () => Get.snackbar(
-              'Download', '${estimation.estimationNo} downloading',
-              snackPosition: SnackPosition.BOTTOM),
+          onPressed: () => controller.downloadEstimate(estimation),
           icon: Icon(Icons.download_rounded, color: AppColors.ember, size: 18),
         ),
         IconButton(
@@ -559,13 +584,14 @@ class _ActionIcons extends StatelessWidget {
           },
           icon: Icon(Icons.edit_rounded, color: AppColors.teal, size: 18),
         ),
-        IconButton(
-          tooltip: 'Delete',
-          visualDensity: VisualDensity.compact,
-          onPressed: () => controller.deleteEstimation(estimation),
-          icon: Icon(Icons.delete_outline_rounded,
-              color: AppColors.danger, size: 18),
-        ),
+        if (!_isCancelled)
+          IconButton(
+            tooltip: _isDraft ? 'Delete' : 'Cancel',
+            visualDensity: VisualDensity.compact,
+            onPressed: () => _confirmDelete(context),
+            icon: Icon(Icons.delete_outline_rounded,
+                color: AppColors.danger, size: 18),
+          ),
       ],
     );
   }

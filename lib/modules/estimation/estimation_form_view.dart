@@ -137,27 +137,11 @@ class EstimationFormView extends GetView<EstimationController> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Obx(() => _pickerTile(
-                                label: 'Agent',
-                                value: controller.selectedAgent.value,
-                                placeholder: 'Direct',
-                                onTap: () => _openAgentPicker(context),
-                              )),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Obx(() => _pickerTile(
-                                label: 'Party *',
-                                value: controller.selectedParty.value?.name,
-                                onTap: () => _openPartyPicker(context),
-                              )),
-                        ),
-                      ],
-                    ),
+                    Obx(() => _pickerTile(
+                          label: 'Party *',
+                          value: controller.selectedParty.value?.name,
+                          onTap: () => _openPartyPicker(context),
+                        )),
                     const SizedBox(height: 22),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -738,53 +722,6 @@ class EstimationFormView extends GetView<EstimationController> {
     );
   }
 
-  void _openAgentPicker(BuildContext context) {
-    Get.bottomSheet(
-      Container(
-        decoration: BoxDecoration(
-          color: AppColors.surfaceElevated,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.all(18),
-        constraints: BoxConstraints(maxHeight: Get.height * 0.6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Select Agent', style: AppTextStyles.h3),
-            const SizedBox(height: 14),
-            Flexible(
-              child: Obx(() => ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: controller.agentOptions.length + 1,
-                    itemBuilder: (context, i) {
-                      if (i == 0) {
-                        return ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text('Direct', style: AppTextStyles.bodyStrong),
-                          onTap: () {
-                            controller.selectAgent(null);
-                            Get.back();
-                          },
-                        );
-                      }
-                      final a = controller.agentOptions[i - 1];
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(a.name, style: AppTextStyles.bodyStrong),
-                        onTap: () {
-                          controller.selectAgent(a);
-                          Get.back();
-                        },
-                      );
-                    },
-                  )),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _openIdNameSheet({
     required String title,
     required List<IdName> items,
@@ -972,8 +909,6 @@ class EstimationFormView extends GetView<EstimationController> {
                   children: [
                     Text(
                         'Party: ${controller.selectedParty.value?.name ?? '-'}',
-                        style: AppTextStyles.body),
-                    Text('Agent: ${controller.selectedAgent.value ?? 'Direct'}',
                         style: AppTextStyles.body),
                     Text('Date: ${_df.format(controller.estimationDate.value)}',
                         style: AppTextStyles.body),
