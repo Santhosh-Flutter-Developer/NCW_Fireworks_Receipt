@@ -2,7 +2,7 @@
     <!-- Internet -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="ncw_fireworks"
+        android:label="NCW Fireworks"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
