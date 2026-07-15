@@ -5,11 +5,13 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/responsive.dart';
 import '../../data/models/billing_item_model.dart';
+import '../../data/models/party_model.dart';
 import '../../data/models/receipt_model.dart';
 import '../../routes/app_routes.dart';
 import '../../widgets/app_data_table.dart';
 import '../../widgets/app_scaffold.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/searchable_picker_sheet.dart';
 import '../../widgets/view_mode_toggle.dart';
 import 'receipt_controller.dart';
 
@@ -43,7 +45,10 @@ class ReceiptListView extends GetView<ReceiptController> {
           children: [
             _FilterBar(controller: controller, df: _df),
             const SizedBox(height: 14),
-            _StatusRow(controller: controller),
+            Obx(() => _TabBar(
+                  active: controller.activeTab.value,
+                  onChanged: controller.setTab,
+                )),
             const SizedBox(height: 14),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -152,17 +157,11 @@ class _FilterBar extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _PlainFilterField(
-                hint: 'Agent',
-                onChanged: controller.setAgentFilter,
-              ),
-            ),
-            const SizedBox(width: 10.0),
-            Expanded(
-              child: _PlainFilterField(
-                hint: 'Party',
-                onChanged: controller.setPartyFilter,
-              ),
+              child: Obx(() => _PartyFilterField(
+                    value: controller.filterParty.value,
+                    parties: controller.parties,
+                    onSelected: controller.setPartyFilter,
+                  )),
             ),
           ],
         ),
@@ -228,32 +227,80 @@ class _DateField extends StatelessWidget {
   }
 }
 
-/// Plain free-text Agent/Party filter — `receipt_listing` doesn't return
-/// an agent/party lookup list the way `estimate_listing` does, so there's
-/// no id to resolve a name against; this filters by substring on
-/// whatever rows are already on the current page (see
-/// `ReceiptController.visibleReceipts`).
-class _PlainFilterField extends StatelessWidget {
-  final String hint;
-  final ValueChanged<String> onChanged;
-  const _PlainFilterField({required this.hint, required this.onChanged});
+// ---------------------------------------------------------------------------
+// Party filter — tap to open the searchable "Select Party" sheet, same
+// widget/behaviour as the Quotation list screen's Party filter.
+// ---------------------------------------------------------------------------
+
+class _PartyFilterField extends StatelessWidget {
+  final String? value; // party *name*, or null for "All Partys"
+  final List<PartyModel> parties;
+  final ValueChanged<String?> onSelected;
+  const _PartyFilterField({
+    required this.value,
+    required this.parties,
+    required this.onSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider),
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => showSearchablePickerSheet<PartyModel>(
+        title: 'Select Party',
+        searchHint: 'Search party name or phone',
+        itemsGetter: () => parties,
+        labelOf: (p) => '${p.name} ${p.phone}',
+        itemBuilder: (context, p) => ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: CircleAvatar(
+            backgroundColor: AppColors.surfaceHigh,
+            child: Text(p.initials,
+                style: AppTextStyles.caption
+                    .copyWith(color: AppColors.textPrimary)),
+          ),
+          title: Text(p.name, style: AppTextStyles.bodyStrong),
+          subtitle: p.phone.isEmpty
+              ? null
+              : Text(p.phone, style: AppTextStyles.caption),
+        ),
+        onSelected: (p) => onSelected(p.name),
+        topAction: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () {
+            Get.back();
+            onSelected(null);
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Text('All Partys',
+                style:
+                    AppTextStyles.bodyStrong.copyWith(color: AppColors.gold)),
+          ),
+        ),
       ),
-      child: TextField(
-        onChanged: onChanged,
-        style: AppTextStyles.body.copyWith(color: AppColors.textPrimary),
-        decoration: InputDecoration(
-          hintText: hint,
-          border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                value ?? 'All Partys',
+                style: AppTextStyles.body.copyWith(
+                  color: value != null
+                      ? AppColors.textPrimary
+                      : AppColors.textMuted,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textMuted),
+          ],
         ),
       ),
     );
@@ -261,39 +308,55 @@ class _PlainFilterField extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Status row — Receipt only ever has one live state (`receipt_listing`'s
-// WHERE clause is hardcoded to `deleted = '0'` server-side, unlike
-// Estimate's Active/Draft/Cancel tabs), so this mirrors the web app's
-// visual layout with a static "Active" badge and a "Cancel" action that
-// resets the filters above rather than switching to a second data set.
+// Active / Cancel tabs — mirrors Quotation's tab bar, driving
+// `receipt_listing`'s `cancelled` request flag.
 // ---------------------------------------------------------------------------
 
-class _StatusRow extends StatelessWidget {
-  final ReceiptController controller;
-  const _StatusRow({required this.controller});
+class _TabBar extends StatelessWidget {
+  final ReceiptTab active;
+  final ValueChanged<ReceiptTab> onChanged;
+  const _TabBar({required this.active, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-          decoration: BoxDecoration(
-            gradient: AppColors.goldGradient,
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Text(
-            'Active',
-            style: AppTextStyles.body
-                .copyWith(fontWeight: FontWeight.w700, color: AppColors.textOnGold),
-          ),
-        ),
-        const SizedBox(width: 12),
-        TextButton(
-          onPressed: controller.clearFilters,
-          child: Text('Cancel', style: AppTextStyles.body),
-        ),
-      ],
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: ReceiptTab.values.map((tab) {
+          final selected = tab == active;
+          return Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(9),
+              onTap: () => onChanged(tab),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+                decoration: BoxDecoration(
+                  gradient: selected ? AppColors.goldGradient : null,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Text(
+                  tab.label,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: selected
+                        ? AppColors.textOnGold
+                        : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 }
@@ -425,7 +488,7 @@ class _ReceiptTile extends StatelessWidget {
                 child: Text(receipt.receiptNumber,
                     style: AppTextStyles.bodyStrong),
               ),
-              const StatusBadge(status: DocStatus.active),
+              StatusBadge(status: receipt.status),
             ],
           ),
           const SizedBox(height: 4),

@@ -7,9 +7,27 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/api_endpoints.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/services/session_service.dart';
+import '../../data/models/billing_item_model.dart';
+import '../../data/models/party_model.dart';
 import '../../data/models/receipt/id_name.dart';
 import '../../data/models/receipt_model.dart';
 import '../../data/respositories/receipt_repository.dart';
+
+/// The 2 tabs shown above the Receipt list on the web app — `receipt.php`'s
+/// `cancelled` filter on `receipt_listing`: Active is `cancelled=0`, Cancel
+/// is `cancelled=1`. Mirrors `QuotationTab` on the Quotation screen.
+enum ReceiptTab { active, cancel }
+
+extension ReceiptTabX on ReceiptTab {
+  String get label {
+    switch (this) {
+      case ReceiptTab.active:
+        return 'Active';
+      case ReceiptTab.cancel:
+        return 'Cancel';
+    }
+  }
+}
 
 class ReceiptController extends GetxController {
   ReceiptController({
@@ -29,8 +47,12 @@ class ReceiptController extends GetxController {
   final searchQuery = ''.obs; // receipt number
   final Rx<DateTime?> filterFrom = Rx<DateTime?>(null);
   final Rx<DateTime?> filterTo = Rx<DateTime?>(null);
-  final agentFilterText = ''.obs;
-  final partyFilterText = ''.obs;
+
+  /// Party dropdown options, populated from `receipt_listing`'s own
+  /// `party_list` — same shape/source as `QuotationController.parties`.
+  final parties = <PartyModel>[].obs;
+  final Rx<String?> filterParty = Rx<String?>(null); // party *name*
+  final activeTab = ReceiptTab.active.obs;
   final isTableView = false.obs;
   final pageSize = 10.obs;
   final currentPage = 1.obs;
@@ -101,6 +123,11 @@ class ReceiptController extends GetxController {
 
   // ---- List loading / filtering / pagination --------------------------------
 
+  String? _partyIdForName(String? name) {
+    if (name == null) return null;
+    return parties.firstWhereOrNull((p) => p.name == name)?.serverPartyId;
+  }
+
   Future<void> loadReceipts() async {
     isLoadingList.value = true;
     try {
@@ -111,9 +138,25 @@ class ReceiptController extends GetxController {
         filterToDate:
             filterTo.value != null ? _apiDateFormat.format(filterTo.value!) : '',
         searchText: searchQuery.value.trim(),
+        filterPartyId: _partyIdForName(filterParty.value) ?? '',
+        cancelled: activeTab.value == ReceiptTab.cancel ? '1' : '0',
         pageNumber: currentPage.value,
         pageLimit: pageSize.value,
       );
+
+      final rowStatus = switch (activeTab.value) {
+        ReceiptTab.active => DocStatus.active,
+        ReceiptTab.cancel => DocStatus.cancelled,
+      };
+
+      if (result.partyList.isNotEmpty) {
+        parties.assignAll(result.partyList.map((p) => PartyModel(
+              id: p.id,
+              serverPartyId: p.id,
+              name: p.name.isEmpty ? 'Untitled Party' : p.name,
+              hasFullDetails: false,
+            )));
+      }
 
       receipts.assignAll(result.items.map((item) {
         final parsedDate = DateTime.tryParse(item.receiptDate) ??
@@ -128,6 +171,7 @@ class ReceiptController extends GetxController {
               : _stripHtml(item.agentName),
           partyName: item.partyName,
           totalAmount: item.totalAmount,
+          status: rowStatus,
         );
       }));
 
@@ -155,21 +199,9 @@ class ReceiptController extends GetxController {
 
   String _stripHtml(String raw) => raw.replaceAll(RegExp(r'<[^>]*>'), '').trim();
 
-  /// Client-side filter applied on top of the fetched page — `receipt.php`
-  /// doesn't return an agent/party lookup list on `receipt_listing`, so
-  /// there's no id to send back as `filter_agent_id`/`filter_party_id`;
-  /// this filters by name on whatever the current page already has.
-  List<ReceiptModel> get visibleReceipts {
-    final agentQuery = agentFilterText.value.trim().toLowerCase();
-    final partyQuery = partyFilterText.value.trim().toLowerCase();
-    return receipts.where((r) {
-      final matchesAgent =
-          agentQuery.isEmpty || r.agentName.toLowerCase().contains(agentQuery);
-      final matchesParty =
-          partyQuery.isEmpty || r.partyName.toLowerCase().contains(partyQuery);
-      return matchesAgent && matchesParty;
-    }).toList();
-  }
+  /// The current page's rows, as returned by the server — the list view
+  /// still calls this `visibleReceipts` to match its existing layout code.
+  List<ReceiptModel> get visibleReceipts => receipts;
 
   void setSearch(String value) {
     searchQuery.value = value;
@@ -192,15 +224,24 @@ class ReceiptController extends GetxController {
     loadReceipts();
   }
 
-  void setAgentFilter(String value) => agentFilterText.value = value;
-  void setPartyFilter(String value) => partyFilterText.value = value;
+  void setPartyFilter(String? party) {
+    filterParty.value = party;
+    currentPage.value = 1;
+    loadReceipts();
+  }
+
+  void setTab(ReceiptTab tab) {
+    activeTab.value = tab;
+    currentPage.value = 1;
+    loadReceipts();
+  }
 
   void clearFilters() {
     searchQuery.value = '';
     filterFrom.value = null;
     filterTo.value = null;
-    agentFilterText.value = '';
-    partyFilterText.value = '';
+    filterParty.value = null;
+    activeTab.value = ReceiptTab.active;
     currentPage.value = 1;
     loadReceipts();
   }

@@ -34,19 +34,20 @@ class ReceiptListItem {
 /// Parses the `{"head": {...}}` envelope returned for a `receipt_listing`
 /// call.
 ///
-/// Note: unlike `estimate_listing`, this endpoint's WHERE clause is
-/// hardcoded to `deleted = '0'` server-side — there's no drafted/cancelled
-/// toggle to request a second page of void receipts, so the list view
-/// only ever shows active rows.
+/// Also carries `party_list` (same `{party_id, party_name}` shape as
+/// `quotation_listing`) so the list screen's Party filter dropdown can be
+/// populated the same way the Quotation screen's is.
 class ReceiptListResponseModel {
   final int code;
   final String message;
   final List<ReceiptListItem> items;
+  final List<IdName> partyList;
 
   const ReceiptListResponseModel({
     required this.code,
     required this.message,
     required this.items,
+    required this.partyList,
   });
 
   bool get isSuccess => code == 200;
@@ -69,10 +70,27 @@ class ReceiptListResponseModel {
       }
     }
 
+    List<IdName> readIdNameList(dynamic raw, String idKey, String nameKey) {
+      final out = <IdName>[];
+      if (raw is List) {
+        for (final row in raw) {
+          if (row is Map) {
+            final m = Map<String, dynamic>.from(row);
+            out.add(IdName(
+              id: m[idKey]?.toString() ?? '',
+              name: m[nameKey]?.toString() ?? '',
+            ));
+          }
+        }
+      }
+      return out;
+    }
+
     return ReceiptListResponseModel(
       code: readCode(head['code']),
       message: readMsg(head['msg']),
       items: items,
+      partyList: readIdNameList(head['party_list'], 'party_id', 'party_name'),
     );
   }
 }

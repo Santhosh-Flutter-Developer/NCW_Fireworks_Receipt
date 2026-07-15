@@ -1,3 +1,5 @@
+import 'billing_item_model.dart';
+
 /// One row in the Receipt list — mirrors the columns on the web app's
 /// Receipt screen: Receipt Date / Receipt Number / Agent Name / Party
 /// Name / Amount.
@@ -9,6 +11,10 @@ class ReceiptModel {
   final String partyName;
   final double totalAmount;
 
+  /// Driven by the selected Active/Cancel tab on the list screen (the
+  /// `receipt_listing` rows themselves don't carry a per-row status).
+  final DocStatus status;
+
   const ReceiptModel({
     required this.id,
     required this.receiptNumber,
@@ -16,6 +22,7 @@ class ReceiptModel {
     required this.agentName,
     required this.partyName,
     required this.totalAmount,
+    this.status = DocStatus.active,
   });
 }
 

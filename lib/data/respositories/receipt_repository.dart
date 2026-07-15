@@ -100,13 +100,13 @@ class ReceiptRepository {
 
   /// Paginated, filtered Receipt list — mirrors the columns/filters on
   /// the web app's Receipt screen (from/to date, receipt number search,
-  /// agent, party).
+  /// party, Active/Cancel).
   Future<ReceiptListResponseModel> listReceipts({
     String filterFromDate = '',
     String filterToDate = '',
     String searchText = '',
-    String filterAgentId = '',
     String filterPartyId = '',
+    String cancelled = '0',
     int pageNumber = 1,
     int pageLimit = 10,
   }) async {
@@ -117,8 +117,8 @@ class ReceiptRepository {
         'filter_from_date': filterFromDate,
         'filter_to_date': filterToDate,
         'search_text': searchText,
-        'filter_agent_id': filterAgentId,
         'filter_party_id': filterPartyId,
+        'cancelled': cancelled,
         'page_number': pageNumber.toString(),
         'page_limit': pageLimit.toString(),
       },
