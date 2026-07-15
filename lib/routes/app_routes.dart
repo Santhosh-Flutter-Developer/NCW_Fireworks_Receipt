@@ -18,6 +18,9 @@ abstract class AppRoutes {
   static const estimationList = '/estimation';
   static const estimationForm = '/estimation/form';
 
+  static const receiptList = '/receipt';
+  static const receiptForm = '/receipt/form';
+
   static const stockAdjustmentList = '/stock-adjustment';
   static const stockAdjustmentForm = '/stock-adjustment/form';
 }

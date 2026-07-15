@@ -1,0 +1,580 @@
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:intl/intl.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_text_styles.dart';
+import '../../core/utils/responsive.dart';
+import '../../data/models/billing_item_model.dart';
+import '../../data/models/receipt_model.dart';
+import '../../routes/app_routes.dart';
+import '../../widgets/app_data_table.dart';
+import '../../widgets/app_scaffold.dart';
+import '../../widgets/common_widgets.dart';
+import '../../widgets/view_mode_toggle.dart';
+import 'receipt_controller.dart';
+
+class ReceiptListView extends GetView<ReceiptController> {
+  const ReceiptListView({super.key});
+
+  static final _df = DateFormat('dd-MM-yyyy');
+
+  @override
+  Widget build(BuildContext context) {
+    return AppScaffold(
+      routeName: AppRoutes.receiptList,
+      title: 'Receipt',
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          controller.startCreate();
+          Get.toNamed(AppRoutes.receiptForm);
+        },
+        backgroundColor: AppColors.gold,
+        foregroundColor: AppColors.textOnGold,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add'),
+      ),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(
+          horizontal: Responsive.horizontalPadding(context),
+          vertical: 16,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _FilterBar(controller: controller, df: _df),
+            const SizedBox(height: 14),
+            _StatusRow(controller: controller),
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _PageSizeSelector(controller: controller),
+                Obx(
+                  () => ViewModeToggle(
+                    isTableView: controller.isTableView.value,
+                    onChanged: controller.toggleViewMode,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Obx(() {
+              if (controller.isLoadingList.value) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 40),
+                  child: Center(
+                      child: CircularProgressIndicator(color: AppColors.gold)),
+                );
+              }
+              final list = controller.visibleReceipts;
+              if (list.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40),
+                  child: EmptyState(
+                    icon: Icons.receipt_long_rounded,
+                    title: 'No receipts found',
+                    subtitle: 'Create a new receipt to get started.',
+                  ),
+                );
+              }
+              return controller.isTableView.value
+                  ? _ReceiptTable(list: list, controller: controller)
+                  : Column(
+                      children: List.generate(list.length, (i) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _ReceiptTile(
+                            receipt: list[i],
+                            controller: controller,
+                          ),
+                        );
+                      }),
+                    );
+            }),
+            const SizedBox(height: 14),
+            _Pager(controller: controller),
+            const SizedBox(height: 90),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Filters: From Date / To Date / Receipt No. search / Agent / Party
+// ---------------------------------------------------------------------------
+
+class _FilterBar extends StatelessWidget {
+  final ReceiptController controller;
+  final DateFormat df;
+  const _FilterBar({required this.controller, required this.df});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Obx(() => Expanded(
+                  child: _DateField(
+                    label: 'From Date',
+                    date: controller.filterFrom.value,
+                    df: df,
+                    onTap: () => _pickDate(context, controller.filterFrom.value,
+                        controller.setDateFrom),
+                  ),
+                )),
+            const SizedBox(width: 10.0),
+            Obx(() => Expanded(
+                  child: _DateField(
+                    label: 'To Date',
+                    date: controller.filterTo.value,
+                    df: df,
+                    onTap: () => _pickDate(context, controller.filterTo.value,
+                        controller.setDateTo),
+                  ),
+                )),
+          ],
+        ),
+        const SizedBox(height: 10.0),
+        Row(
+          children: [
+            Expanded(
+              child: SearchField(
+                hint: 'Receipt No. Search',
+                onChanged: controller.setSearch,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10.0),
+        Row(
+          children: [
+            Expanded(
+              child: _PlainFilterField(
+                hint: 'Agent',
+                onChanged: controller.setAgentFilter,
+              ),
+            ),
+            const SizedBox(width: 10.0),
+            Expanded(
+              child: _PlainFilterField(
+                hint: 'Party',
+                onChanged: controller.setPartyFilter,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _pickDate(BuildContext context, DateTime? current,
+      ValueChanged<DateTime?> onPicked) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+    );
+    if (picked != null) onPicked(picked);
+  }
+}
+
+class _DateField extends StatelessWidget {
+  final String label;
+  final DateTime? date;
+  final DateFormat df;
+  final VoidCallback onTap;
+  const _DateField(
+      {required this.label,
+      required this.date,
+      required this.df,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.calendar_today_rounded,
+                size: 14, color: AppColors.textMuted),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                date != null ? df.format(date!) : label,
+                style: AppTextStyles.body.copyWith(
+                  color: date != null
+                      ? AppColors.textPrimary
+                      : AppColors.textMuted,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Plain free-text Agent/Party filter — `receipt_listing` doesn't return
+/// an agent/party lookup list the way `estimate_listing` does, so there's
+/// no id to resolve a name against; this filters by substring on
+/// whatever rows are already on the current page (see
+/// `ReceiptController.visibleReceipts`).
+class _PlainFilterField extends StatelessWidget {
+  final String hint;
+  final ValueChanged<String> onChanged;
+  const _PlainFilterField({required this.hint, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: TextField(
+        onChanged: onChanged,
+        style: AppTextStyles.body.copyWith(color: AppColors.textPrimary),
+        decoration: InputDecoration(
+          hintText: hint,
+          border: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Status row — Receipt only ever has one live state (`receipt_listing`'s
+// WHERE clause is hardcoded to `deleted = '0'` server-side, unlike
+// Estimate's Active/Draft/Cancel tabs), so this mirrors the web app's
+// visual layout with a static "Active" badge and a "Cancel" action that
+// resets the filters above rather than switching to a second data set.
+// ---------------------------------------------------------------------------
+
+class _StatusRow extends StatelessWidget {
+  final ReceiptController controller;
+  const _StatusRow({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+          decoration: BoxDecoration(
+            gradient: AppColors.goldGradient,
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Text(
+            'Active',
+            style: AppTextStyles.body
+                .copyWith(fontWeight: FontWeight.w700, color: AppColors.textOnGold),
+          ),
+        ),
+        const SizedBox(width: 12),
+        TextButton(
+          onPressed: controller.clearFilters,
+          child: Text('Cancel', style: AppTextStyles.body),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Entries-per-page selector
+// ---------------------------------------------------------------------------
+
+class _PageSizeSelector extends StatelessWidget {
+  final ReceiptController controller;
+  const _PageSizeSelector({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceElevated,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: Obx(
+              () => DropdownButton<int>(
+                value: controller.pageSize.value,
+                style:
+                    AppTextStyles.body.copyWith(color: AppColors.textPrimary),
+                dropdownColor: AppColors.surfaceElevated,
+                items: const [10, 25, 50, 100]
+                    .map((n) => DropdownMenuItem(value: n, child: Text('$n')))
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) controller.setPageSize(v);
+                },
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text('entries per page', style: AppTextStyles.caption),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Table view
+// ---------------------------------------------------------------------------
+
+class _ReceiptTable extends StatelessWidget {
+  final List<ReceiptModel> list;
+  final ReceiptController controller;
+  const _ReceiptTable({required this.list, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final df = ReceiptListView._df;
+    final startIndex =
+        (controller.currentPage.value - 1) * controller.pageSize.value;
+    return AppDataTable(
+      columns: const [
+        'S.No',
+        'Receipt Date',
+        'Receipt Number',
+        'Agent Name',
+        'Party Name',
+        'Amount',
+        'Action',
+      ],
+      rows: List.generate(list.length, (i) {
+        final r = list[i];
+        return [
+          Text('${startIndex + i + 1}', style: AppTextStyles.body),
+          Text(df.format(r.date), style: AppTextStyles.body),
+          Text(r.receiptNumber, style: AppTextStyles.bodyStrong),
+          Text(r.agentName, style: AppTextStyles.body),
+          SizedBox(
+            width: 160,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(r.partyName,
+                    style: AppTextStyles.bodyStrong,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                Text('Creator : NCW Fireworks Retail',
+                    style: AppTextStyles.caption),
+              ],
+            ),
+          ),
+          Text('₹${r.totalAmount.toStringAsFixed(2)}',
+              style: AppTextStyles.bodyStrong.copyWith(color: AppColors.gold)),
+          _ActionIcons(receipt: r, controller: controller),
+        ];
+      }),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// List (card) view
+// ---------------------------------------------------------------------------
+
+class _ReceiptTile extends StatelessWidget {
+  final ReceiptModel receipt;
+  final ReceiptController controller;
+  const _ReceiptTile({required this.receipt, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final df = ReceiptListView._df;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(receipt.receiptNumber,
+                    style: AppTextStyles.bodyStrong),
+              ),
+              const StatusBadge(status: DocStatus.active),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(receipt.partyName, style: AppTextStyles.body),
+          const SizedBox(height: 2),
+          Text('Agent: ${receipt.agentName}', style: AppTextStyles.caption),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(Icons.calendar_today_rounded,
+                  size: 13, color: AppColors.textMuted),
+              const SizedBox(width: 5),
+              Text(df.format(receipt.date), style: AppTextStyles.caption),
+              const Spacer(),
+              Text('₹${receipt.totalAmount.toStringAsFixed(0)}',
+                  style: AppTextStyles.bodyStrong
+                      .copyWith(color: AppColors.gold)),
+            ],
+          ),
+          const Divider(height: 20),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _ActionIcons(receipt: receipt, controller: controller),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Row/card actions: print, download, delete (no edit — receipts can only
+// be created or cancelled, never edited, server-side)
+// ---------------------------------------------------------------------------
+
+class _ActionIcons extends StatelessWidget {
+  final ReceiptModel receipt;
+  final ReceiptController controller;
+  const _ActionIcons({required this.receipt, required this.controller});
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await Get.dialog<bool>(
+      AlertDialog(
+        backgroundColor: AppColors.surfaceElevated,
+        title: const Text('Delete Receipt'),
+        content: const Text('Are you surely want to delete this receipt?'),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Get.back(result: true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      controller.deleteReceipt(receipt);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          tooltip: 'Print',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => controller.printReceipt(receipt),
+          icon: Icon(Icons.print_rounded, color: AppColors.ember, size: 18),
+        ),
+        IconButton(
+          tooltip: 'Download',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => controller.downloadReceipt(receipt),
+          icon: Icon(Icons.download_rounded, color: AppColors.ember, size: 18),
+        ),
+        IconButton(
+          tooltip: 'Delete',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => _confirmDelete(context),
+          icon:
+              Icon(Icons.delete_outline_rounded, color: AppColors.danger, size: 18),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pagination footer
+// ---------------------------------------------------------------------------
+
+class _Pager extends StatelessWidget {
+  final ReceiptController controller;
+  const _Pager({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final countOnPage = controller.visibleReceipts.length;
+      final pages = controller.totalPages;
+      final page = controller.currentPage.value;
+
+      return Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 10,
+        runSpacing: 8,
+        children: [
+          Text(
+            countOnPage == 0
+                ? 'No entries on this page'
+                : 'Showing $countOnPage ${countOnPage == 1 ? 'entry' : 'entries'}',
+            style: AppTextStyles.caption,
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                onPressed:
+                    page > 1 ? () => controller.goToPage(page - 1) : null,
+                icon: const Icon(Icons.chevron_left_rounded, size: 18),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: AppColors.goldGradient,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text('$page / $pages',
+                    style: AppTextStyles.bodyStrong
+                        .copyWith(color: AppColors.textOnGold)),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                onPressed:
+                    page < pages ? () => controller.goToPage(page + 1) : null,
+                icon: const Icon(Icons.chevron_right_rounded, size: 18),
+              ),
+            ],
+          ),
+        ],
+      );
+    });
+  }
+}

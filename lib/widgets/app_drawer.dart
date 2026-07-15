@@ -19,6 +19,7 @@ class AppDrawer extends StatefulWidget {
 class _AppDrawerState extends State<AppDrawer> {
   bool _creationOpen = true;
   bool _billingOpen = true;
+  bool _paymentOpen = true;
 
   void _go(String route) {
     Navigator.of(context).pop();
@@ -80,6 +81,19 @@ class _AppDrawerState extends State<AppDrawer> {
                       _subTile(
                         label: 'Estimation',
                         route: AppRoutes.estimationList,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  _sectionExpander(
+                    icon: Icons.currency_rupee_rounded,
+                    label: 'Payment',
+                    isOpen: _paymentOpen,
+                    onTap: () => setState(() => _paymentOpen = !_paymentOpen),
+                    children: [
+                      _subTile(
+                        label: 'Receipt',
+                        route: AppRoutes.receiptList,
                       ),
                     ],
                   ),

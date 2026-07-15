@@ -12,6 +12,7 @@ class ApiEndpoints {
   static Uri get productPrice => Uri.parse('$baseUrl/product.php');
   static Uri get estimate => Uri.parse('$baseUrl/estimate.php');
   static Uri get quotation => Uri.parse('$baseUrl/quotation.php');
+  static Uri get receipt => Uri.parse('$baseUrl/receipt.php');
 
   /// Print/download A4 PDF for one estimate — same report is used for both
   /// actions; the browser/OS's own PDF viewer offers print & save/download.
@@ -22,4 +23,9 @@ class ApiEndpoints {
   /// actions, same reasoning as [estimateReport].
   static Uri quotationReport(String quotationId) => Uri.parse(
       '$reportsBaseUrl/rpt_quotation_a4.php?view_quotation_id=$quotationId&from=');
+
+  /// Print/download A5 PDF for one receipt — same report for both actions,
+  /// same reasoning as [estimateReport].
+  static Uri receiptReport(String receiptId) => Uri.parse(
+      '$reportsBaseUrl/rpt_receipt_a5.php?view_receipt_id=$receiptId&from=');
 }

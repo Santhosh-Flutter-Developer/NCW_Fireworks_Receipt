@@ -17,6 +17,9 @@ import '../modules/product/product_list_view.dart';
 import '../modules/quotation/quotation_binding.dart';
 import '../modules/quotation/quotation_form_view.dart';
 import '../modules/quotation/quotation_list_view.dart';
+import '../modules/receipt/receipt_binding.dart';
+import '../modules/receipt/receipt_form_view.dart';
+import '../modules/receipt/receipt_list_view.dart';
 import '../modules/stock_adjustment/stock_adjustment_binding.dart';
 import '../modules/stock_adjustment/stock_adjustment_form_view.dart';
 import '../modules/stock_adjustment/stock_adjustment_list_view.dart';
@@ -80,6 +83,16 @@ class AppPages {
       name: AppRoutes.estimationForm,
       page: () => const EstimationFormView(),
       binding: EstimationBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.receiptList,
+      page: () => const ReceiptListView(),
+      binding: ReceiptBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.receiptForm,
+      page: () => const ReceiptFormView(),
+      binding: ReceiptBinding(),
     ),
     GetPage(
       name: AppRoutes.stockAdjustmentList,
