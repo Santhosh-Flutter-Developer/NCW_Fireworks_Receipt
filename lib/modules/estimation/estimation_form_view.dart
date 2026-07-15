@@ -8,6 +8,7 @@ import '../../data/models/estimate/id_name.dart';
 import '../../data/models/party_model.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/searchable_picker_sheet.dart';
+import 'estimate_product_picker_view.dart';
 import 'estimation_controller.dart';
 
 class EstimationFormView extends GetView<EstimationController> {
@@ -759,7 +760,8 @@ class EstimationFormView extends GetView<EstimationController> {
           snackPosition: SnackPosition.BOTTOM);
       return;
     }
-    showSearchablePickerSheet<EstimateProductOption>(
+    Get.to(() => const EstimateProductPickerView());
+    /*showSearchablePickerSheet<EstimateProductOption>(
       title: 'Select Product',
       subtitle: 'The section (1 or 2) is set automatically from the pricelist.',
       searchHint: 'Search product',
@@ -787,7 +789,7 @@ class EstimationFormView extends GetView<EstimationController> {
           productName: p.productName,
         );
       },
-    );
+    );*/
   }
 
   void _showPreview(BuildContext context) {
