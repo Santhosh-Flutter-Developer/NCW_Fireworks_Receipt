@@ -113,9 +113,24 @@ class _EstimateProductPickerViewState extends State<EstimateProductPickerView> {
     }
   }
 
+  Future<void> _confirmBack() async {
+    final confirmed = await confirmDialog(
+      title: 'Go back?',
+      message: 'Are you sure you want to go back? '
+          'Any product selections made here will be lost.',
+    );
+    if (confirmed) Get.back();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        _confirmBack();
+      },
+      child: Scaffold(
       backgroundColor: AppColors.midnight,
       appBar: AppBar(
         title: const Text('Select Products'),
@@ -246,6 +261,7 @@ class _EstimateProductPickerViewState extends State<EstimateProductPickerView> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

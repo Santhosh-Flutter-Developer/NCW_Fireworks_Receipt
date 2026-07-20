@@ -16,11 +16,37 @@ class EstimationFormView extends GetView<EstimationController> {
 
   static final _df = DateFormat('dd MMM yyyy');
 
+  Future<void> _confirmBack() async {
+    final confirmed = await confirmDialog(
+      title: 'Go back?',
+      message: 'Are you sure you want to go back? '
+          'Any unsaved changes to this estimate will be lost.',
+    );
+    if (confirmed) Get.back();
+  }
+
+  Future<void> _confirmClear() async {
+    final confirmed = await confirmDialog(
+      title: 'Clear form?',
+      message: 'Are you sure you want to clear this estimate? '
+          'All items and details entered will be removed.',
+      confirmText: 'Clear',
+      danger: true,
+    );
+    if (confirmed) controller.clearForm();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEditing = controller.editingEstimation != null;
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        _confirmBack();
+      },
+      child: Scaffold(
       backgroundColor: AppColors.midnight,
       appBar: AppBar(
         title: Text(isEditing
@@ -55,7 +81,7 @@ class EstimationFormView extends GetView<EstimationController> {
                     children: [
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () => controller.clearForm(),
+                          onPressed: _confirmClear,
                           child: const Text('Clear'),
                         ),
                       ),
@@ -108,6 +134,7 @@ class EstimationFormView extends GetView<EstimationController> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -284,6 +311,16 @@ class EstimationFormView extends GetView<EstimationController> {
     });
   }
 
+  Future<void> _confirmRemoveItem(int i, String productName) async {
+    final confirmed = await confirmDialog(
+      title: 'Remove item?',
+      message: 'Are you sure you want to remove "$productName" from this estimate?',
+      confirmText: 'Remove',
+      danger: true,
+    );
+    if (confirmed) controller.removeItem(i);
+  }
+
   Widget _itemRow(int i) {
     final item = controller.formItems[i];
     return Container(
@@ -318,7 +355,7 @@ class EstimationFormView extends GetView<EstimationController> {
                 ),
               ),
               IconButton(
-                onPressed: () => controller.removeItem(i),
+                onPressed: () => _confirmRemoveItem(i, item.productName),
                 visualDensity: VisualDensity.compact,
                 icon: Icon(Icons.close_rounded,
                     size: 18, color: AppColors.textMuted),

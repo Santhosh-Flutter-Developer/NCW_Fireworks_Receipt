@@ -1,7 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_text_styles.dart';
 import '../data/models/billing_item_model.dart';
+
+/// Shared Yes/No confirmation dialog. Returns true only if the user
+/// tapped the confirm action; back-press/tap-outside/"No" all resolve
+/// to false.
+Future<bool> confirmDialog({
+  required String title,
+  required String message,
+  String confirmText = 'Yes',
+  String cancelText = 'No',
+  bool danger = false,
+}) async {
+  final result = await Get.dialog<bool>(
+    AlertDialog(
+      backgroundColor: AppColors.surfaceElevated,
+      title: Text(title, style: AppTextStyles.h3),
+      content: Text(message, style: AppTextStyles.body),
+      actions: [
+        TextButton(
+          onPressed: () => Get.back(result: false),
+          child: Text(cancelText),
+        ),
+        TextButton(
+          onPressed: () => Get.back(result: true),
+          child: Text(
+            confirmText,
+            style: danger ? TextStyle(color: AppColors.danger) : null,
+          ),
+        ),
+      ],
+    ),
+  );
+  return result == true;
+}
 
 class StatusBadge extends StatelessWidget {
   final DocStatus status;
