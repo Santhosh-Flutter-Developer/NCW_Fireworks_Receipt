@@ -363,6 +363,10 @@ class EstimationFormView extends GetView<EstimationController> {
             ],
           ),
           const SizedBox(height: 6),
+          Text(
+              'Rate: ₹${item.rate.toStringAsFixed(2)} / ${item.unit}',
+              style: AppTextStyles.caption),
+          const SizedBox(height: 6),
           Row(
             children: [
               _QtyStepperField(
@@ -372,11 +376,12 @@ class EstimationFormView extends GetView<EstimationController> {
                 onChanged: (qty) => controller.updateQuantity(i, qty),
               ),
               const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                    'Rate: ₹${item.rate.toStringAsFixed(2)} / ${item.unit}',
-                    style: AppTextStyles.caption),
-              ),
+              Spacer(),
+              // Expanded(
+              //   child: Text(
+              //       'Rate: ₹${item.rate.toStringAsFixed(2)} / ${item.unit}',
+              //       style: AppTextStyles.caption),
+              // ),
               Text(
                 '₹${item.amount.toStringAsFixed(2)}',
                 style: AppTextStyles.bodyStrong,
